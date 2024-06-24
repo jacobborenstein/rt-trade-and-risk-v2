@@ -1,0 +1,10 @@
+requests
+beautifulsoup4
+bs4
+certifi
+selenium
+pandas
+fastapi
+uvicorn
+redis
+streamlit
