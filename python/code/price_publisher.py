@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request
 from httpx import get
 from numpy import fromfile
 import redis
-import scrapeson
+import price_scraper
 
 app = FastAPI()
 
@@ -15,13 +15,13 @@ print(ticker_list)
 async def publish_single_ticker(request: Request, ticker: str):
     while True:
         time.sleep(5)
-        r.publish(ticker, scrapeson.get_price(ticker))
+        r.publish(ticker, price_scraper.get_price(ticker))
         print("status : Sent")
 
 @app.post("/publish//bulk/s&p500")
 async def publish_500():
     while True:
-        dic = scrapeson.get_s_and_p()
+        dic = price_scraper.get_s_and_p()
         for t in dic:
             r.publish(t, dic.get(t))
             print("status : Sent from ticker " + t)
