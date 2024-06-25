@@ -29,6 +29,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
-          context: .
+          context: ./python
+          file: ./python/Dockerfile
           push: true
           tags: ghcr.io/${{ github.repository }}/project:latest
