@@ -7,7 +7,7 @@ class Direction(str, Enum):
     BUY = 'BUY'
     SELL = 'SELL'
 
-class account(BaseModel):
+class Account(BaseModel):
     account_id: str = Field(..., alias="accountId")
     account_name: str = Field(..., alias="accountName")
     trades: List['Trade'] = []
@@ -17,15 +17,23 @@ class account(BaseModel):
     def get_account_name(self) -> str:
         return self.account_name
 
-class primaryKey(BaseModel):
-    account: account
+
+class PrimaryKey(BaseModel):
+    account: Account
     trade_id: str = Field(..., alias="tradeId")
 
 class Trade(BaseModel):
-    primaryKey: primaryKey
+    primaryKey: PrimaryKey
     ticker: str
     direction: Direction
     quantity: int
     executed_price: float = Field(..., alias="executedPrice")
     executed_user: str = Field(..., alias="executedUser")
     executed_time: datetime = Field(..., alias="executedTime")
+
+class Position(BaseModel):
+    account: Account
+    ticker: str
+    quantity: int
+    avg_price: float = Field(..., alias="avgPrice")
+    last_updated: datetime = Field(..., alias="lastUpdated")
