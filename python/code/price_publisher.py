@@ -4,6 +4,7 @@ from httpx import get
 from numpy import fromfile
 import redis
 import price_scraper
+import json
 
 app = FastAPI()
 
@@ -22,8 +23,9 @@ async def publish_single_ticker(request: Request, ticker: str):
 async def publish_500():
     while True:
         dic = price_scraper.get_s_and_p()
-        for t in dic:
-            r.publish(t, dic.get(t))
-            print("status : Sent from ticker " + t)
+        data = json.dumps(dic)
+        r.publish("prices_and_values", data)
+        print("status : Sent " + data)
+
         time.sleep(30)
 

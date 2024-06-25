@@ -1,9 +1,9 @@
-import enum
 import requests 
 from urllib3.exceptions import InsecureRequestWarning
 from bs4 import BeautifulSoup 
 import pandas as pd 
 import time
+from datetime import datetime
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'} 
@@ -35,7 +35,7 @@ def get_s_and_p():
         page_txt = list(soup.stripped_strings)
         for index, s in enumerate(page_txt):
             if s.isupper():
-                dic[s] = page_txt[index + 2]
+                dic[s] = {"price":page_txt[index + 2], "time":str(datetime.now())}
         dic.pop("S&P 500")
     except AttributeError: 
         print("Change the Element id")
