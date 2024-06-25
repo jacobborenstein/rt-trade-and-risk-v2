@@ -1,10 +1,7 @@
-name: Build and Push Docker Images
+name: Build and Push Docker Image
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
     branches:
       - main
 
@@ -29,26 +26,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push price_publisher image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
           context: .
-          file: python/Dockerfile.publisher
           push: true
-          tags: ghcr.io/${{ github.repository }}/price_publisher
-
-      - name: Build and push price_scraper image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: python/Dockerfile.scraper
-          push: true
-          tags: ghcr.io/${{ github.repository }}/price_scraper
-
-      - name: Build and push price_subscriber image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: python/Dockerfile.subscriber
-          push: true
-          tags: ghcr.io/${{ github.repository }}/price_subscriber
+          tags: ghcr.io/${{ github.repository }}/project:latest
