@@ -8,14 +8,14 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Install pip requirements
-COPY code/requirements.txt .
-RUN python -m pip install -r requirements.txt
+COPY ./code/requirements.txt /project/requirements.txt
+RUN python -m pip install -r /project/requirements.txt
 
 # Set the working directory in the container
 WORKDIR /project
 
 # Copy the code directory contents into the container at /project
-COPY code /project
+COPY ./code /project
 
 # Creates a non-root user with an explicit UID and adds permission to access the /project folder
 RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /project
