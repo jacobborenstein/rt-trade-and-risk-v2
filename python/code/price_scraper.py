@@ -7,7 +7,6 @@ from datetime import datetime
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'} 
-sp_ticker_list = open("s&p_500_tickers.txt").read().splitlines()
 
 #urls = [
  #   'https://finance.yahoo.com/quote/NVDA/',

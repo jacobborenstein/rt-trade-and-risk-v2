@@ -10,7 +10,6 @@ app = FastAPI()
 
 r = redis.Redis(host='localhost', port=6379)
 r.ping()
-ticker_list = open("s&p_500_tickers.txt").read().splitlines()
 print(ticker_list)
 @app.post("/publish/{ticker}")
 async def publish_single_ticker(request: Request, ticker: str):
