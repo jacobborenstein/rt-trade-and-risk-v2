@@ -27,8 +27,9 @@ def get_price(ticker):
     
 def get_s_and_p():
     dic = {}
+    req = requests.Session()
     url = "https://www.slickcharts.com/sp500"
-    page = requests.get(url,headers=headers, verify=False) 
+    page = req.get(url,headers=headers, verify=False) 
     try:
         soup = BeautifulSoup(page.text,'html.parser') 
         page_txt = list(soup.stripped_strings)
