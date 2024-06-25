@@ -8,7 +8,7 @@ import json
 
 app = FastAPI()
 
-r = redis.Redis(host='localhost', port=6379)
+r = redis.Redis(host='redis', port=6379)
 r.ping()
 @app.post("/publish/{ticker}")
 async def publish_single_ticker(request: Request, ticker: str):
