@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  price_publisher:
+    build: .
+    command: python /project/price_publisher.py
+    volumes:
+      - ./python/code:/project
+    ports:
+      - "8000:80"
+
+  price_scraper:
+    build: .
+    command: python /project/price_scraper.py
+    volumes:
+      - ./python/code:/project
+    ports:
+      - "8001:80"
+
+  price_subscriber:
+    build: .
+    command: python /project/price_subscriber.py
+    volumes:
+      - ./python/code:/project
+    ports:
+      - "8002:80"
