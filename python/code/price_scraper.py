@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import pandas as pd 
 import time
 from datetime import datetime
+from selenium import webdriver
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'} 
@@ -31,7 +32,10 @@ def get_s_and_p():
     url = "https://www.slickcharts.com/sp500"
     page = req.get(url,headers=headers, verify=False) 
     try:
-        soup = BeautifulSoup(page.text,'html.parser') 
+        dr = webdriver.Chrome()
+        dr.get(url)
+        soup = BeautifulSoup(dr.page_source,"lxml")
+        #soup = BeautifulSoup(page.text,'html.parser') 
         page_txt = list(soup.stripped_strings)
         for index, s in enumerate(page_txt):
             if s.isupper():

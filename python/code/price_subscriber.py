@@ -16,7 +16,7 @@ containter = master.empty()
 containter.table(df)
 while True:
     try:
-        r = redis.Redis(host='redis', port=6379)
+        r = redis.Redis(host='localhost', port=6379)
         pubsub = r.pubsub()
         r.ping()
         pubsub.subscribe("prices_and_values")
