@@ -11,12 +11,15 @@ logger = logging.getLogger(__name__)
 dic = {"foo":{"bar":"bar", "barry":"barry"}}
 df = pd.DataFrame.from_dict((dic), orient='index')
 to_track = st.text_input("What ticker(s) would you like to track? (seperate with spaces)").split(" ")
+wait_time = st.selectbox("Update prices how often?", (30, 60, 300))
+update_on = wait_time/30
+counter = 0
 master = st.container(height=17858)
 containter = master.empty()
 containter.table(df)
 while True:
     try:
-        r = redis.Redis(host='redis', port=6379)
+        r = redis.Redis(host='localhost', port=6379)
         pubsub = r.pubsub()
         r.ping()
         pubsub.subscribe("prices_and_values")
@@ -31,8 +34,9 @@ while True:
             containter.empty()
             containter.table(df)
         for message in pubsub.listen():
-            logger.info(1)
-            if message['type'] == 'message':
+            counter += 1
+            if message['type'] == 'message' and counter >= update_on:
+                counter = 0
                 logger.info(2)
                 dic_json = message['data']
                 full_dic = json.loads(dic_json)
