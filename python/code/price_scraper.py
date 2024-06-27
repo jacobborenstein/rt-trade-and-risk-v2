@@ -40,7 +40,6 @@ def get_s_and_p():
         for index, s in enumerate(page_txt):
             if s.isupper():
                 dic[s] = {"price":page_txt[index + 2], "time":str(datetime.now())}
-        dic.pop("S&P 500")
     except AttributeError: 
         print("Change the Element id")
     return(dic)
