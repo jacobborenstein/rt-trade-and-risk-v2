@@ -1,26 +1,38 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis
+    container_name: bredis
+    ports:
+      - "6379:6379"
+
   price_publisher:
     build: .
-    command: python /project/price_publisher.py
+    command: sh -c "uvicorn price_publisher:app --reload"
     volumes:
-      - ./python/code:/project
+      - ./python/code:/app
     ports:
-      - "8000:80"
+      - "8000:8000"
+    depends_on:
+      - redis
 
   price_scraper:
     build: .
-    command: python /project/price_scraper.py
+    command: python /app/price_scraper.py
     volumes:
-      - ./python/code:/project
+      - ./python/code:/app
     ports:
-      - "8001:80"
+      - "8001:8001"
+    depends_on:
+      - redis
 
   price_subscriber:
     build: .
-    command: python /project/price_subscriber.py
+    command: sh -c "streamlit run /app/price_subscriber.py"
     volumes:
-      - ./python/code:/project
+      - ./python/code:/app
     ports:
-      - "8002:80"
+      - "8501:8501"
+    depends_on:
+      - redis
