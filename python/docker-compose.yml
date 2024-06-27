@@ -7,7 +7,7 @@ services:
       - "6379:6379"
 
   price_publisher:
-    build: ..
+    build: .
     command: sh -c "uvicorn price_publisher:app --host 0.0.0.0 --reload"
     volumes:
       - ./code:/app
@@ -18,7 +18,7 @@ services:
       - redis
 
   price_scraper:
-    build: ..
+    build: .
     volumes:
       - ./code:/app
     working_dir: /app
@@ -28,7 +28,7 @@ services:
       - redis
 
   price_subscriber:
-    build: ..
+    build: .
     command: sh -c  "streamlit run price_subscriber.py"
     volumes:
       - ./code:/app
