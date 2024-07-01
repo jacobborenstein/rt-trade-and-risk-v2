@@ -4,7 +4,6 @@ from bs4 import BeautifulSoup
 import pandas as pd 
 import time
 from datetime import datetime
-from selenium import webdriver
 
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'} 
@@ -28,15 +27,13 @@ def get_price(ticker):
     
 def get_s_and_p():
     dic = {}
-    req = requests.Session()
+    req = requests#.Session()
     url = "https://www.slickcharts.com/sp500"
-    page = req.get(url,headers=headers, verify=False) 
+    page = req.get(url,headers=headers, verify=False, cookies={'_ga': 'GA1.1.942504165.1719341093', '_ga_MWXZ0FBF55':'GS1.1.1719856034.2.0.1719856034.0.0.0', '_hjSessionUser_845487' : 'eyJpZCI6ImJjOGM5MzJmLTViNjctNTIxOC1hZDA5LWIzODc4ZDY5ZTA5MSIsImNyZWF0ZWQiOjE3MTkzNDEwOTg0MzQsImV4aXN0aW5nIjpmYWxzZX0=', 'cf_clearance':'SuXJ4vR1M_VjmXI5XWMdLsdQWiBBZoFuNPBfgrauKKc-1719856033-1.0.1.1-9o2TVBJtzERcD5IFRXLEBVjAUIvaUkr6m5MO3btrXhf.tsRcM1ZtcrnK3v7U9uBnz3vGciNw71.9o3hIEehCmA'}) 
     try:
-        dr = webdriver.Chrome()
-        dr.get(url)
-        soup = BeautifulSoup(dr.page_source,"lxml")
-        #soup = BeautifulSoup(page.text,'html.parser') 
-        page_txt = list(soup.stripped_strings)
+        soup = BeautifulSoup(page.text,'html.parser') 
+        page_txt = list(soup.stripped_strings) 
+        #page_txt = list(soup.stripped_strings)
         for index, s in enumerate(page_txt):
             if s.isupper():
                 dic[s] = {"price":page_txt[index + 2], "time":str(datetime.now())}
