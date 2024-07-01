@@ -11,6 +11,8 @@ class Account(BaseModel):
     account_id: str = Field(..., alias="accountId")
     account_name: str = Field(..., alias="accountName")
     trades: List['Trade'] = []
+    positions: List['Position'] = []
+    
     def get_account_id(self) -> str:
         return self.account_id
 

@@ -1,19 +1,24 @@
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import json
 import time
 from typing import List
 from datetime import datetime
-from models import Direction, Account, PrimaryKey, Trade, Position
+from models.models import Direction, Account, PrimaryKey, Trade, Position
 import redis
+import logging
 
-accounts: List[Account] = []
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def add_trade_to_account(account: Account, trade: Trade):
     """Function to add a trade to the account's trades list."""
     account.trades.append(trade)
 
-def create_position(account: Account, ticker: str) -> Position:
-    """Function to create/update the position for a given ticker."""
-    trades = account.trades
+def create_position(account: Account, ticker: str, trades: List[Trade]) -> Position:
     quantity = 0
     total_price = 0.0
     for trade in trades:
@@ -25,15 +30,9 @@ def create_position(account: Account, ticker: str) -> Position:
                 quantity -= trade.quantity
                 total_price -= trade.quantity * trade.executed_price
     avg_price = total_price / quantity if quantity != 0 else 0.0
-    print(f"Creating position: account={account}, ticker={ticker}, quantity={quantity}, avg_price={avg_price}, last_updated={datetime.now()}")  # Debug print
-    
-    # Create a shallow copy of the account object without trades to avoid circular reference
-    # will delete this after incorporating a mongoDB and removing trades[] from Account model
-    account_copy = account.model_copy()
-    account_copy.trades = []
-    
+       
     return Position(
-        account=account_copy,
+        account=account,
         ticker=ticker,
         quantity=quantity,
         avgPrice=avg_price,
@@ -43,41 +42,39 @@ def create_position(account: Account, ticker: str) -> Position:
 def main():
     r = redis.Redis(host='localhost', port=6379)
     pubsub = r.pubsub()
-    pubsub.subscribe('trades')
+    pubsub.subscribe('trades-from-mongo')
     while True:
         try:
             for message in pubsub.listen():
                 if message['type'] == 'message':
-                    trade_data = message['data']
-                    print(f"Received trade data: {trade_data}")
-                    trade_dict = json.loads(trade_data)
-                    print(f"Parsed trade dictionary: {trade_dict}")
-
-                    # Create the Trade object directly using the parsed dictionary
-                    trade = Trade.model_validate(trade_dict)
-
-                    account = next((acc for acc in accounts if acc.get_account_id() == trade.primaryKey.account.get_account_id()), None)
-                    if account is None:
-                        accounts.append(trade.primaryKey.account)
-                        account = trade.primaryKey.account
-
-                    add_trade_to_account(account, trade)
-                    position = create_position(account, trade.ticker)
-
-                    print(f"Position object: {position}")  # Debug print
-
-                    # Convert Position to a dictionary and adjust field names for Redis
-                    position_dict = position.model_dump(by_alias=True)
+                    trade_data = json.loads(message['data'])
+                    logger.info(f"1) Received trade data: {trade_data}")
                     
-                    # Convert datetime to string
-                    position_dict['lastUpdated'] = position_dict['lastUpdated'].isoformat()
-                    print(f"Position dictionary: {position_dict}")  # Debug print
+                    account_dict = trade_data['primaryKey']['account']
+                    account = Account(accountId=account_dict['accountId'], accountName=account_dict['accountName'])
+                    primary_key = PrimaryKey(account=account, tradeId=trade_data['primaryKey']['tradeId'])
+                    
+                    trade = Trade(
+                        primaryKey=primary_key,
+                        ticker=trade_data['ticker'],
+                        direction=Direction(trade_data['direction']),
+                        quantity=trade_data['quantity'],
+                        executedPrice=trade_data['executedPrice'],
+                        executedUser=trade_data['executedUser'],
+                        executedTime=datetime.fromisoformat(trade_data['executedTime'])
+                    )
+                    logger.info(f"2) Processed trade: {trade}")
 
-                    r.publish('positions', json.dumps(position_dict))
-                    print(f"Processed trade: {trade}")
-                    print(f"Updated position: {position}")
+                    trades = [trade]
+                    position = create_position(account, trade.ticker, trades)
+                    logger.info(f"3) Created position: {position}")
+                
+                    position_data = position.model_dump(by_alias=True)
+                    position_data['lastUpdated'] = position_data['lastUpdated'].isoformat()
+                    r.publish('positions', json.dumps(position_data))
+                    logger.info(f"4) Updated position: {position}")
         except Exception as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             time.sleep(5)
 
 if __name__ == "__main__":
