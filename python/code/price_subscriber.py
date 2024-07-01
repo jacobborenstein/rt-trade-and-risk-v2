@@ -19,7 +19,7 @@ containter = master.empty()
 containter.table(df)
 while True:
     try:
-        r = redis.Redis(host='localhost', port=6379)
+        r = redis.Redis(host='redis', port=6379)
         pubsub = r.pubsub()
         r.ping()
         pubsub.subscribe("prices_and_values")
@@ -45,6 +45,7 @@ while True:
                 r.set(latest, dic_json)
                 dic = {}
                 logger.info("gotem")
+                logger.info(full_dic['NVDA'])
                 for t in to_track:
                     dic[t] = dict(full_dic).get(t)
                 df = pd.DataFrame.from_dict((dic), orient='index')

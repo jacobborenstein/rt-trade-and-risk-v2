@@ -8,7 +8,7 @@ import json
 
 app = FastAPI()
 
-r = redis.Redis(host='localhost', port=6379)
+r = redis.Redis(host='redis', port=6379)
 r.ping()
 @app.post("/publish/{ticker}")
 async def publish_single_ticker(request: Request, ticker: str):
@@ -22,6 +22,7 @@ async def publish_500():
     while True:
         dic = price_scraper.get_s_and_p()
         data = json.dumps(dic)
+        print(data)
         r.publish("prices_and_values", data)
         print("status : Sent " + data)
 

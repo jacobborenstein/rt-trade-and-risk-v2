@@ -27,9 +27,10 @@ def get_price(ticker):
     
 def get_s_and_p():
     dic = {}
+    session = requests.Session()
     req = requests#.Session()
     url = "https://www.slickcharts.com/sp500"
-    page = req.get(url,headers=headers, verify=False, cookies={'_ga': 'GA1.1.942504165.1719341093', '_ga_MWXZ0FBF55':'GS1.1.1719856034.2.0.1719856034.0.0.0', '_hjSessionUser_845487' : 'eyJpZCI6ImJjOGM5MzJmLTViNjctNTIxOC1hZDA5LWIzODc4ZDY5ZTA5MSIsImNyZWF0ZWQiOjE3MTkzNDEwOTg0MzQsImV4aXN0aW5nIjpmYWxzZX0=', 'cf_clearance':'SuXJ4vR1M_VjmXI5XWMdLsdQWiBBZoFuNPBfgrauKKc-1719856033-1.0.1.1-9o2TVBJtzERcD5IFRXLEBVjAUIvaUkr6m5MO3btrXhf.tsRcM1ZtcrnK3v7U9uBnz3vGciNw71.9o3hIEehCmA'}) 
+    page = session.get(url,headers=headers, verify=False, cookies=session.cookies.get_dict()) 
     try:
         soup = BeautifulSoup(page.text,'html.parser') 
         page_txt = list(soup.stripped_strings) 
@@ -40,3 +41,5 @@ def get_s_and_p():
     except AttributeError: 
         print("Change the Element id")
     return(dic)
+
+print(get_s_and_p())
