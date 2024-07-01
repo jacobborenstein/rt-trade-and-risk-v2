@@ -30,11 +30,12 @@ def create_position(account: Account, ticker: str, trades: List[Trade]) -> Posit
                 quantity -= trade.quantity
                 total_price -= trade.quantity * trade.executed_price
     avg_price = total_price / quantity if quantity != 0 else 0.0
-       
+    position_type = "LONG" if quantity > 0 else "SHORT"  
     return Position(
         account=account,
         ticker=ticker,
         quantity=quantity,
+        positionType=position_type,
         avgPrice=avg_price,
         lastUpdated=datetime.now()
     )

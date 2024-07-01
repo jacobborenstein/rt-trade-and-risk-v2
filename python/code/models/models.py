@@ -7,6 +7,10 @@ class Direction(str, Enum):
     BUY = 'BUY'
     SELL = 'SELL'
 
+class PositionType(str, Enum):
+    LONG = 'LONG'
+    SHORT = 'SHORT'
+
 class Account(BaseModel):
     account_id: str = Field(..., alias="accountId")
     account_name: str = Field(..., alias="accountName")
@@ -37,5 +41,6 @@ class Position(BaseModel):
     account: Account
     ticker: str
     quantity: int
+    position_type: PositionType = Field(..., alias="positionType")
     avg_price: float = Field(..., alias="avgPrice")
     last_updated: datetime = Field(..., alias="lastUpdated")
