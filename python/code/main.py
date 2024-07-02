@@ -25,14 +25,15 @@ async def publish_account(account: Account, name: str):
 
 @app.post("/publish/trade")
 async def publish_trade():
-    logger.info("Publishing trade...")
+    logger.info("main-1) Publishing trade...")
     trade = await generate_trade()
-    logger.info(f"created trade")
+    logger.info(f"main-2) created trade")
     trade_data = trade.model_dump(by_alias=True)
     trade_data['executedTime'] = trade_data['executedTime'].isoformat()  # Convert datetime to string
     r.publish('trades-to-mongo', json.dumps(trade_data))
-    logger.info(f"published trade: {trade_data}")
+    logger.info(f"main-3) published trade: {trade_data}")
     return {"status": "Trade Sent"}
+
 
 async def generate_trade() -> Trade:
     logger.info("Generating trade...")
@@ -46,7 +47,7 @@ async def generate_trade() -> Trade:
     account_data['accountName'] = account_data.pop('account_name')
     account = Account(**account_data)
 
-    primaryKey = PrimaryKey(account=account, tradeId=generate_trade_id(trade_ticker))
+    primaryKey = PrimaryKey(accountId=account.account_id, tradeId=generate_trade_id(trade_ticker))
     quantity = random.randint(1, 10)
     executed_price = random.randint(100, 200)
     return Trade(

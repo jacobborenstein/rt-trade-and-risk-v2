@@ -7,18 +7,14 @@ import json
 import time
 from typing import List
 from datetime import datetime
-from models.models import Direction, Account, PrimaryKey, Trade, Position
+from models.models import Direction, Account, Trade, Position
 import redis
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def add_trade_to_account(account: Account, trade: Trade):
-    """Function to add a trade to the account's trades list."""
-    account.trades.append(trade)
-
-def create_position(account: Account, ticker: str, trades: List[Trade]) -> Position:
+def create_position(account_id: str, ticker: str, trades: List[Trade]) -> Position:
     quantity = 0
     total_price = 0.0
     for trade in trades:
@@ -32,7 +28,7 @@ def create_position(account: Account, ticker: str, trades: List[Trade]) -> Posit
     avg_price = total_price / quantity if quantity != 0 else 0.0
     position_type = "LONG" if quantity > 0 else "SHORT"  
     return Position(
-        account=account,
+        accountId=account_id,
         ticker=ticker,
         quantity=quantity,
         positionType=position_type,
@@ -48,32 +44,20 @@ def main():
         try:
             for message in pubsub.listen():
                 if message['type'] == 'message':
-                    trade_data = json.loads(message['data'])
-                    logger.info(f"1) Received trade data: {trade_data}")
-                    
-                    account_dict = trade_data['primaryKey']['account']
-                    account = Account(accountId=account_dict['accountId'], accountName=account_dict['accountName'])
-                    primary_key = PrimaryKey(account=account, tradeId=trade_data['primaryKey']['tradeId'])
-                    
-                    trade = Trade(
-                        primaryKey=primary_key,
-                        ticker=trade_data['ticker'],
-                        direction=Direction(trade_data['direction']),
-                        quantity=trade_data['quantity'],
-                        executedPrice=trade_data['executedPrice'],
-                        executedUser=trade_data['executedUser'],
-                        executedTime=datetime.fromisoformat(trade_data['executedTime'])
-                    )
-                    logger.info(f"2) Processed trade: {trade}")
+                    trades_data = json.loads(message['data'])
+                    trades = [Trade(**trade_dict) for trade_dict in trades_data]
 
-                    trades = [trade]
-                    position = create_position(account, trade.ticker, trades)
-                    logger.info(f"3) Created position: {position}")
-                
+                    if trades:
+                        logger.info(f"1) Received trades: {trades}")
+                        account_id = trades[0].primaryKey.account_id
+                        ticker = trades[0].ticker
+                        position = create_position(account_id, ticker, trades)
+                        logger.info(f"2) Created position: {position}")
+
                     position_data = position.model_dump(by_alias=True)
                     position_data['lastUpdated'] = position_data['lastUpdated'].isoformat()
                     r.publish('positions', json.dumps(position_data))
-                    logger.info(f"4) Updated position: {position}")
+                    logger.info(f"3) Updated position: {position}")
         except Exception as e:
             logger.info(f"Error: {e}")
             time.sleep(5)

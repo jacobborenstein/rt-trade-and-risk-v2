@@ -5,7 +5,7 @@ import asyncio
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from code.models.models import Trade, Account, Position
-from code.mongo.crud import add_account, get_account, get_random_account, add_trade, add_position
+from code.mongo.crud import add_account, get_account, get_random_account, add_trade, add_position, get_trades_by_account_by_ticker
 import redis
 import json
 import logging
@@ -31,27 +31,36 @@ async def main():
 async def handle_message(r, message):
     channel = message['channel'].decode('utf-8')
     data = message['data']
-    logger.info(f"1) Received data on {channel} channel")
+    logger.info(f"mongo-1) Received data on {channel} channel")
                     
     if channel == 'accounts':
         account_dict = json.loads(data)
-        logger.info(f"2) Received account data: {account_dict}")
+        logger.info(f"mongo-2) Received account data: {account_dict}")
         account = Account(**account_dict)
         result = await add_account(account)
-        logger.info(f"3) Added account: {result}")
+        logger.info(f"mongo-3) Added account: {result}")
                     
     elif channel == 'trades-to-mongo':
         trade_dict = json.loads(data)
-        logger.info(f"2) Received trade data: {trade_dict}")
+        logger.info(f"mongo-4) Received trade data: {trade_dict}")
         trade = Trade(**trade_dict)
         result = await add_trade(trade)
-        logger.info(f"3) Added trade: {result}")
-        r.publish('trades-from-mongo', json.dumps(trade_dict))
-        logger.info(f"4) Published trade data to trades-from-mongo channel")
+        logger.info(f"mongo-5) Added trade: {result}")
+        trades = await get_trades_by_account_by_ticker(trade.primaryKey.account_id, trade.ticker)
+        # Convert trades to JSON serializable format
+        trades_json = json.dumps([{
+            **trade.model_dump(by_alias=True),
+            'executedTime': trade.executed_time.isoformat()  # Convert datetime to string
+        } for trade in trades])
+        r.publish('trades-from-mongo', trades_json)
+        logger.info(f"mongo-6) Published trades for ticker {trade.ticker} to Position Aggregator")
                     
     elif channel == 'positions':
-        pass
-
+        position_dict = json.loads(data)
+        logger.info(f"mongo-7) Received position data: {position_dict}")
+        position = Position(**position_dict)
+        result = await add_position(position)
+        logger.info(f"mongo-8) Added position: {result}")
 
 if __name__ == "__main__":
     asyncio.run(main())

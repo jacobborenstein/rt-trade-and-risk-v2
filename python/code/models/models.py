@@ -14,18 +14,9 @@ class PositionType(str, Enum):
 class Account(BaseModel):
     account_id: str = Field(..., alias="accountId")
     account_name: str = Field(..., alias="accountName")
-    trades: List['Trade'] = []
-    positions: List['Position'] = []
-    
-    def get_account_id(self) -> str:
-        return self.account_id
-
-    def get_account_name(self) -> str:
-        return self.account_name
-
 
 class PrimaryKey(BaseModel):
-    account: Account
+    account_id: str = Field(..., alias="accountId")
     trade_id: str = Field(..., alias="tradeId")
 
 class Trade(BaseModel):
@@ -38,7 +29,7 @@ class Trade(BaseModel):
     executed_time: datetime = Field(..., alias="executedTime")
 
 class Position(BaseModel):
-    account: Account
+    account_id: str = Field(..., alias="accountId")    
     ticker: str
     quantity: int
     position_type: PositionType = Field(..., alias="positionType")

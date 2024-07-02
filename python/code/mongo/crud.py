@@ -4,7 +4,6 @@ from code.mongo.database import account_collection, trade_collection, position_c
 from datetime import datetime
 import redis
 import logging
-import random
 import json
 
 logging.basicConfig(level=logging.INFO)
@@ -18,8 +17,6 @@ def account_helper(account: Account) -> dict:
     return {
         "account_id": account.account_id,
         "account_name": account.account_name,
-        "trades": [trade.model_dump() for trade in account.trades],
-        "positions": [position.model_dump() for position in account.positions]
     }
 
 # Add Account
@@ -43,15 +40,10 @@ async def get_random_account() -> dict:
         return account_list[0]
     return None
 
-
-
 def trade_helper(trade: Trade) -> dict:
     return {
         "primary_key": {
-            "account": {
-                "account_id": trade.primaryKey.account.account_id,
-                "account_name": trade.primaryKey.account.account_name
-            },
+            "account_id": trade.primaryKey.account_id,
             "trade_id": trade.primaryKey.trade_id
         },
         "ticker": trade.ticker,
@@ -65,24 +57,45 @@ def trade_helper(trade: Trade) -> dict:
 # Add Trade
 async def add_trade(trade: Trade) -> dict:
     trade_data = trade_helper(trade)
-    logger.info(f"Adding trade...")
+    logger.info(f"crud-1) Adding trade...")
     result = await trade_collection.insert_one(trade_data)
     trade = await trade_collection.find_one({"_id": result.inserted_id})
-    logger.info(f"Trade added: {trade}")
+    logger.info(f"crud-2) Trade added: {trade}")
     return trade
 
-# Embed Trade in Account
-async def add_trade_to_account(account_id: str, trade: Trade) -> dict:
-    pass
-
+# Get trades by account ID and ticker
+async def get_trades_by_account_by_ticker(account_id: str, ticker: str) -> list:
+    trades = await trade_collection.find({
+        "primary_key.account_id": account_id,
+        "ticker": ticker
+    }).to_list(length=None)
+    # Convert MongoDB data to Pydantic models
+    return [Trade(
+        primaryKey=PrimaryKey(
+            accountId=trade['primary_key']['account_id'],
+            tradeId=trade['primary_key']['trade_id']
+        ),
+        ticker=trade['ticker'],
+        direction=trade['direction'],
+        quantity=trade['quantity'],
+        executedPrice=trade['executed_price'],
+        executedUser=trade['executed_user'],
+        executedTime=trade['executed_time']
+    ) for trade in trades]
 
 def position_helper(position: Position) -> dict:
-    pass
+    return {
+        "account_id": position.account_id,
+        "ticker": position.ticker,
+        "quantity": position.quantity,
+        "position_type": position.position_type,
+        "avg_price": position.avg_price,
+        "last_updated": position.last_updated
+    }
 
 # Add Position
 async def add_position(position: Position) -> dict:
-    pass
-
-# Embed Position in Account
-async def add_position_to_account(account_id: str, position: Position) -> dict:
-    pass
+    position_data = position_helper(position)
+    result = await position_collection.insert_one(position_data)
+    position = await position_collection.find_one({"_id": result.inserted_id})
+    return position
