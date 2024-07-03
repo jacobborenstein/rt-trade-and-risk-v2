@@ -18,16 +18,11 @@ async def publish_single_ticker(request: Request, ticker: str):
 
 @app.post("/publish/bulk/s&p500")
 async def publish_500():
-    #while True:
-     #   dic = price_scraper.get_s_and_p()
-      #  data = json.dumps(dic)
-       # print(data)
-        #r.publish("prices_and_values", data)
-        #print("status : Sent " + data)
     while True:
         for t in ticker_list:
             data = price_scraper.get_with_data(t)
             sendable = json.dumps(data)
             r.publish(t, sendable)
+            r.publish('prices_and_values', sendable)
             print("status: Sent " + str(data))
             time.sleep(2)
