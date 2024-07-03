@@ -1,45 +1,29 @@
-import requests 
-from urllib3.exceptions import InsecureRequestWarning
-from bs4 import BeautifulSoup 
-import pandas as pd 
+import datetime
+import finnhub
 import time
-from datetime import datetime
 
-requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
-headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.105 Safari/537.36'} 
+api_key = 'cq240mpr01ql95ncha8gcq240mpr01ql95ncha90'
+finnhub_client = finnhub.Client(api_key)
 
-#urls = [
- #   'https://finance.yahoo.com/quote/NVDA/',
-  #  'https://finance.yahoo.com/quote/AAPL/',
-   # 'https://finance.yahoo.com/quote/TSLA/'
-    #]
-#prices = {}
 def get_price(ticker):
-    price = "" 
-    url = 'https://finance.yahoo.com/quote/' + ticker + "/"
-    page = requests.get(url,headers=headers, verify=False) 
     try:
-        soup = BeautifulSoup(page.text,'html.parser') 
-        price = soup.find('fin-streamer', {'class':'livePrice svelte-mgkamr'}).find_all('span')[0].text 
-    except AttributeError: 
-        print("Change the Element id")
-    return(price)
-    
-def get_s_and_p():
-    dic = {}
-    session = requests.Session()
-    req = requests#.Session()
-    url = "https://www.slickcharts.com/sp500"
-    page = session.get(url,headers=headers, verify=False, cookies=session.cookies.get_dict()) 
-    try:
-        soup = BeautifulSoup(page.text,'html.parser') 
-        page_txt = list(soup.stripped_strings) 
-        #page_txt = list(soup.stripped_strings)
-        for index, s in enumerate(page_txt):
-            if s.isupper():
-                dic[s] = {"price":page_txt[index + 2], "time":str(datetime.now())}
-    except AttributeError: 
-        print("Change the Element id")
-    return(dic)
+        # Fetch current price
+        quote = finnhub_client.quote(ticker)
+        price = quote['c']  # Current price
+        return price
+    except Exception as e:
+        print(f'Error fetching price for {ticker}: {e}')
+        return ''
 
-print(get_s_and_p())
+def get_with_data(ticker):
+    price_dict = {}
+    price_dict["ticker"] = ticker
+    price_dict['price'] = get_price(ticker)
+    price_dict['time'] = str(datetime.datetime.today())
+    return price_dict
+#if __name__ == '__main__':
+    # Example usage
+   # print(get_price('AAPL'))
+    #print(get_price('NVDA'))
+ #   l = ['AAPL', 'NVDA']
+  #  print(get_bulk(l))
