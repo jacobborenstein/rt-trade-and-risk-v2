@@ -51,8 +51,11 @@ def main():
                         logger.info(f"1) Received trades: {trades}")
                         account_id = trades[0].primaryKey.account_id
                         ticker = trades[0].ticker
+                        trade = max(trades, key=lambda t: t.executed_time)
                         position = create_position(account_id, ticker, trades)
                         logger.info(f"2) Created position: {position}")
+                        # send most recent trade to redis cache
+                        r.publish('trades-from-position_agg', json.dumps(trade.model_dump(by_alias=True)))
 
                     position_data = position.model_dump(by_alias=True)
                     position_data['lastUpdated'] = position_data['lastUpdated'].isoformat()

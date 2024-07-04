@@ -35,3 +35,8 @@ class Position(BaseModel):
     position_type: PositionType = Field(..., alias="positionType")
     avg_price: float = Field(..., alias="avgPrice")
     last_updated: datetime = Field(..., alias="lastUpdated")
+
+class TickerPrice(BaseModel):
+    ticker: str
+    price: float
+    time: datetime

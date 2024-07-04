@@ -1,0 +1,1 @@
+To run main, run the command "uvicorn app_code.main:app --reload" from the python directory

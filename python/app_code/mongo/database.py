@@ -13,3 +13,5 @@ database = client['traderDB']
 account_collection = database.get_collection('accounts')
 trade_collection = database.get_collection('trades')
 position_collection = database.get_collection('positions')
+price_collection = database.get_collection('ticker_prices')
+

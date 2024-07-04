@@ -1,6 +1,6 @@
 from bson import ObjectId
-from code.models.models import Account, Trade, Position, PrimaryKey, Direction
-from code.mongo.database import account_collection, trade_collection, position_collection
+from app_code.models.models import Account, Trade, Position, PrimaryKey, Direction, TickerPrice
+from app_code.mongo.database import account_collection, trade_collection, position_collection, price_collection
 from datetime import datetime
 import redis
 import logging
@@ -99,3 +99,29 @@ async def add_position(position: Position) -> dict:
     result = await position_collection.insert_one(position_data)
     position = await position_collection.find_one({"_id": result.inserted_id})
     return position
+
+# Get Recent Position for an Account and Ticker
+async def get_recent_position(account_id: str, ticker: str) -> dict:
+    position = await position_collection.find_one(
+        {"account_id": account_id, "ticker": ticker},
+        sort=[("last_updated", -1)]
+    )
+    return position
+
+async def ticker_price_helper(ticker_price: TickerPrice) -> dict:
+    return {
+        "ticker": ticker_price.ticker,
+        "price": ticker_price.price,
+        "time": ticker_price.time.isoformat() 
+    }
+
+async def add_ticker_price(ticker_price: TickerPrice) -> dict:
+    price_data = await ticker_price_helper(ticker_price)
+    result = await price_collection.insert_one(price_data)
+    position = await price_collection.find_one({"_id": result.inserted_id})
+    return position
+
+async def get_price_for_ticker(ticker: str) -> dict:
+    price = await price_collection.find_one({"ticker": ticker},
+    sort=[("last_updated", -1)])
+    return price
