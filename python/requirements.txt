@@ -74,3 +74,5 @@ wsproto==1.2.0
 yfinance==0.2.40
 finnhub-python
 streamlit
+pydantic
+numpy
