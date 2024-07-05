@@ -76,3 +76,4 @@ finnhub-python
 streamlit
 pydantic
 numpy
+yfinance
