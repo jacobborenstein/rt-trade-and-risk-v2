@@ -4,7 +4,9 @@ import json
 import time
 from datetime import datetime
 import numpy as np
+import yfinance as yf
 from risk_calculator import RiskCalculator
+from cache_database import retrieve_position_data
 
 class RiskService:
     def __init__(self, redis_host='localhost', redis_port=6379):
@@ -18,20 +20,29 @@ class RiskService:
             try:
                 for message in self.pubsub.listen():
                     if message['type'] == 'message':
-                        position_data = message['data']
-                        position_dict = json.loads(position_data)
-                        self.calculate_risk(position_dict)
+                        position_key_data = message['data']
+                        position_key_dict = json.loads(position_key_data)
+                        account_id = position_key_dict['account_id']
+                        ticker = position_key_dict['ticker']
+                        
+                        # Retrieve position data using retrieve_position_data
+                        position = retrieve_position_data(self.r, account_id, ticker)
+                        if position:
+                            self.calculate_risk(position)
             except Exception as e:
                 print(f"Error: {e}")
                 time.sleep(5)
 
     def calculate_risk(self, position):
-        returns = self.simulate_returns(position)
-        benchmark_returns = self.simulate_benchmark_returns()
+        ticker = position['ticker']
+        benchmark_ticker = 'SPY'  # Example benchmark ticker
+
+        returns = self.get_historical_returns(ticker)
+        benchmark_returns = self.get_benchmark_returns(benchmark_ticker)
 
         risk_measures = {
             'account': position['account'],
-            'ticker': position['ticker'],
+            'ticker': ticker,
             'standard_deviation': self.risk_calculator.calculate_standard_deviation(returns),
             'sharpe_ratio': self.risk_calculator.calculate_sharpe_ratio(returns),
             'alpha': self.risk_calculator.calculate_alpha(returns, benchmark_returns),
@@ -43,16 +54,34 @@ class RiskService:
         print(f"Calculated risk measures: {risk_measures}")
         # Optionally, publish or store the risk measures
 
-    def simulate_returns(self, position):
-        np.random.seed(0)
-        returns = np.random.normal(0, 0.1, 100)
+    def get_historical_returns(self, ticker):
+        if not self.data_source:
+            raise ValueError("No data source provided for fetching historical returns.")
+        
+        historical_prices = self.data_source.get_historical_prices(ticker)
+        returns = self.calculate_returns_from_prices(historical_prices)
         return returns
 
-    def simulate_benchmark_returns(self):
-        np.random.seed(1)
-        benchmark_returns = np.random.normal(0, 0.1, 100)
+    def get_benchmark_returns(self, benchmark_ticker):
+        if not self.data_source:
+            raise ValueError("No data source provided for fetching benchmark returns.")
+        
+        benchmark_prices = self.data_source.get_historical_prices(benchmark_ticker)
+        benchmark_returns = self.calculate_returns_from_prices(benchmark_prices)
         return benchmark_returns
 
+    @staticmethod
+    def calculate_returns_from_prices(prices):
+        returns = np.diff(prices) / prices[:-1]
+        return returns
+
+class DataSource:
+    def get_historical_prices(self, ticker):
+        stock_data = yf.Ticker(ticker)
+        historical_data = stock_data.history(period="1y")  # Fetches 1 year of data
+        return historical_data['Close'].values
+
 if __name__ == "__main__":
-    risk_service = RiskService()
+    data_source = DataSource()
+    risk_service = RiskService(data_source=data_source)
     risk_service.run()
