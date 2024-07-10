@@ -16,7 +16,7 @@
             }
         },
         {
-            "name": "Run Mongo Service",
+            "name": "Run Mongo",
             "type": "python",
             "request": "launch",
             "module": "app_code.mongo.mongo",
@@ -27,7 +27,7 @@
             }
         },
         {
-            "name": "Run Main Service",
+            "name": "Run Main",
             "type": "python",
             "request": "launch",
             "module": "uvicorn",
@@ -78,7 +78,7 @@
             "type": "python",
             "request": "launch",
             "module": "streamlit",
-            "args": ["run", "/home/project/rt-trade-and-risk-v2/python/app_code/authorization/login_page.py"],
+            "args": ["run", "/home/project/rt-trade-and-risk-v2/python/app_code/authorization/login.py"],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {
@@ -90,8 +90,8 @@
         {
             "name": "Run All Services",
             "configurations": [
-                "Run Mongo Service",
-                "Run Main Service",
+                "Run Mongo",
+                "Run Main",
                 "Run Position Aggregator",
                 "Run Price Feed Publsiher",
                 "Run Price Feed Subscriber"
@@ -100,8 +100,8 @@
         {
             "name": "Run All Services Except Price Feed",
             "configurations": [
-                "Run Mongo Service",
-                "Run Main Service",
+                "Run Mongo",
+                "Run Main",
                 "Run Position Aggregator",
                 "Run Login Page"
             ]
