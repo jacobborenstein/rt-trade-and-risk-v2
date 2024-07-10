@@ -37,3 +37,13 @@ class Position(BaseModel):
     quantity: int
     avg_price: float = Field(..., alias="avgPrice")
     last_updated: datetime = Field(..., alias="lastUpdated")
+
+    def to_json(self):
+    # Convert the object to a dictionary for json
+        return {
+            "account": self.account.dict(by_alias=True),
+            "ticker": self.ticker,
+            "quantity": self.quantity,
+            "avgPrice": self.avg_price,
+            "lastUpdated": self.last_updated.isoformat() if self.last_updated else None
+        }
