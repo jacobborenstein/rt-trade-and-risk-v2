@@ -1,0 +1,54 @@
+
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Packages #
+############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+.pyc
+
+venv/*
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+/home/project/rt-trade-and-risk-v2/python/code/project.code-workspace
+.vscode
+libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+.gitignore
+login_page.py
+.DS_Store
+trade_publisher.py
+position_listener.py

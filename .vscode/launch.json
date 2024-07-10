@@ -14,6 +14,103 @@
                 ],
                 "projectType": "general"
             }
-        }
+        },
+        {
+            "name": "Run Mongo",
+            "type": "python",
+            "request": "launch",
+            "module": "app_code.mongo.mongo",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8000"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Position Aggregator",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/position_agg/position_agg.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/position_agg",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Price Feed Publsiher",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["price_publisher:app", "--reload", "--port", "8080"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/price_feed",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python/app_code/price_feed"
+            }
+        },
+        {
+            "name": "Run Price Feed Subscriber",
+            "type": "python",
+            "request": "launch",
+            "module": "streamlit",
+            "args": ["run", "/home/project/rt-trade-and-risk-v2/python/app_code/price_feed/price_subscriber.py"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Run Login Page",
+            "type": "python",
+            "request": "launch",
+            "module": "streamlit",
+            "args": ["run", "/home/project/rt-trade-and-risk-v2/python/app_code/authorization/login.py"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        }              
+    ],
+    "compounds": [
+        {
+            "name": "Run All Services",
+            "configurations": [
+                "Run Mongo",
+                "Run Main",
+                "Run Position Aggregator",
+                "Run Price Feed Publsiher",
+                "Run Price Feed Subscriber"
+            ]
+        },
+        {
+            "name": "Run All Services Except Price Feed",
+            "configurations": [
+                "Run Mongo",
+                "Run Main",
+                "Run Position Aggregator",
+                "Run Login Page"
+            ]
+        },
+        {
+            "name": "Run Price Feed",
+            "configurations": [
+                "Run Price Feed Publsiher",
+                "Run Price Feed Subscriber"
+            ]}
     ]
 }
