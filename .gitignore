@@ -38,3 +38,17 @@ ehthumbs.db
 Thumbs.db
 
 .pyc
+
+venv/*
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+/home/project/rt-trade-and-risk-v2/python/code/project.code-workspace
+.vscode
+libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+.gitignore
+login_page.py
+.DS_Store
+trade_publisher.py
+position_listener.py
