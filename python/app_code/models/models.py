@@ -39,6 +39,18 @@ class Trade(BaseModel):
     executed_user: str = Field(..., alias="executedUser")
     executed_time: datetime = Field(..., alias="executedTime")
 
+    def to_json(self):
+    # Convert the object to a dictionary for json
+        return {
+            "primaryKey": self.primaryKey.dict(by_alias=True),
+            "ticker": self.ticker,
+            "direction": self.direction,
+            "quantity": self.quantity,
+            "executedPrice": self.executed_price,
+            "executedUser": self.executed_user,
+            "executedTime": self.executed_time.isoformat() if self.executed_time else None
+        }
+
 class Position(BaseModel):
     account_id: str = Field(..., alias="accountId")
     ticker: str
