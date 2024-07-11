@@ -1,4 +1,3 @@
-from bson import ObjectId
 from app_code.models.models import Account, Trade, Position, PrimaryKey, Direction, TickerPrice, UserInDB
 from app_code.mongo.database import account_collection, trade_collection, position_collection, price_collection, user_collection
 from datetime import datetime
@@ -153,3 +152,11 @@ async def update_user_permissions(username: str, can_read: List[str], can_write:
     await user_collection.update_one({"username": username}, {"$set": update_data})
     user = await user_collection.find_one({"username": username})
     return user
+
+async def get_user_accounts(username: str) -> dict:
+    user = await user_collection.find_one({"username": username})
+    accounts = {
+        "can_read": user["can_read"],
+        "can_write": user["can_write"]
+    }
+    return accounts
