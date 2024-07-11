@@ -105,7 +105,7 @@ def main():
         r = redis.Redis(host='localhost', port=6379)
         pubsub = r.pubsub()
         pubsub.subscribe('positions','trades','prices_and_values')
-        print("Subscribed to 'positions' channel")
+        print("Subscribed to channels")
     except Exception as e:
         print(f"Error connecting to Redis: {e}")
         return
@@ -160,7 +160,7 @@ def main():
 
                         #add to redis data base 
                         cache_trade_data(r, trade)
-                        print('HERE')
+                    
                         #have to publish 'price-keys' the key to the channel
                         r.publish('trade-keys', json.dumps(trade.primaryKey.trade_id))
 
