@@ -9,6 +9,8 @@ import uuid
 import random
 from app_code.mongo.crud import update_user_permissions, get_recent_position, create_user, check_user_exists
 from app_code.authorization.auth import authenticate_user, create_access_token, get_current_user, get_password_hash
+from app_code.redis_cache.cache_database import retrieve_price_data
+
 
 # Define constants
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -54,6 +56,7 @@ async def publish_trade(trade_request: TradeRequest, current_user: User = Depend
     logger.info("main-1) Publishing trade...")
     trade = await generate_trade(account_id, current_user.user_id, ticker, quantity)
     logger.info(f"main-2) created trade")
+
     trade_data = trade.model_dump(by_alias=True)
     trade_data['executedTime'] = trade_data['executedTime'].isoformat()  # Convert datetime to string
     r.publish('trades-to-mongo', json.dumps(trade_data))
@@ -97,8 +100,7 @@ async def create_new_user(user: UserCreate):
     created_user = await create_user(user_in_db)
     return created_user
 
-    position = await get_recent_position(account_id, ticker)
-    return position
+    
 
 async def generate_trade(account_id: str, user_id: str, ticker: str, quantity: int) -> Trade:
     logger.info(f"account_id: {account_id}, user_id: {user_id}, ticker: {ticker}, quantity: {quantity}")
@@ -106,7 +108,7 @@ async def generate_trade(account_id: str, user_id: str, ticker: str, quantity: i
 
 
     primaryKey = PrimaryKey(accountId=account_id, tradeId=generate_trade_id(ticker))
-    executed_price = random.randint(100, 200)
+    executed_price = retrieve_price_data(r, ticker)
     logger.info(f"Creating trade with executedUser: {user_id}")
 
     return Trade(
