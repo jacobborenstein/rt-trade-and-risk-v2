@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import logging
 import uuid
 import random
-from app_code.mongo.crud import update_user_permissions, get_recent_position, create_user, check_user_exists
+from app_code.mongo.crud import get_user_accounts, update_user_permissions, get_recent_position, create_user, check_user_exists
 from app_code.authorization.auth import authenticate_user, create_access_token, get_current_user, get_password_hash
 from app_code.redis_cache.cache_database import retrieve_price_data
 
@@ -100,6 +100,10 @@ async def create_new_user(user: UserCreate):
     created_user = await create_user(user_in_db)
     return created_user
 
+@app.get("/users/accounts")
+async def get_user_account(current_user: User = Depends(get_current_user)):
+    return await get_user_accounts(current_user.username)
+    
     
 
 async def generate_trade(account_id: str, user_id: str, ticker: str, quantity: int) -> Trade:
