@@ -9,20 +9,15 @@ tickers = 'MMM ACE ABT ANF ACN ADBE AMD AES AET AFL A GAS APD ARG AKAM AA ALXN A
 ticker_list = tickers.split(" ")
 r = redis.Redis(host='redis', port=6379)
 r.ping()
-@app.post("/publish/{ticker}")
-async def publish_single_ticker(request: Request, ticker: str):
-    while True:
-        time.sleep(5)
-        r.publish(ticker, price_scraper.get_price(ticker))
-        print("status : Sent")
-
-@app.post("/publish/bulk/s&p500")
-async def publish_500():
-    while True:
-        for t in ticker_list:
-            data = price_scraper.get_with_data(t)
-            sendable = json.dumps(data)
-            r.publish(t, sendable)
-            r.publish('prices_and_values', sendable)
-            print("status: Sent " + str(data))
-            time.sleep(2)
+client = 0
+while True:
+    for t in ticker_list:
+        data = price_scraper.get_with_data(t, client)
+        print(client)
+        client += 1
+        client = client % 5
+        sendable = json.dumps(data)
+        r.publish(t, sendable)
+        r.publish('prices_and_values', sendable)
+        print("status: Sent " + str(data))
+        time.sleep(.4)

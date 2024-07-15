@@ -41,15 +41,10 @@ while True:
         containter.table(df)
         for message in pubsub.listen():
             if message['type'] == 'message':
-                print(1)
                 dic_json = message['data']
-                print(2)
                 dic_not_json = json.loads(dic_json)
-                print(3)
                 latest = time.time()
-                print(4)
                 r.set("latest_time", latest)
-                print(5)
                 r.set(str(dict(dic_not_json).get('ticker')), dic_json)
                 logger.info("gotem")
                 #if dict(dic_not_json).keys().__contains__(t):

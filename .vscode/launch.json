@@ -73,6 +73,18 @@
             }
         },
         {
+            "name": "Run Price Feed Subscriber",
+            "type": "python",
+            "request": "launch",
+            "module": "streamlit",
+            "args": ["run", "/home/project/rt-trade-and-risk-v2/python/app_code/price_feed/price_subscriber.py"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
             "name": "Run Login Page",
             "type": "python",
             "request": "launch",
@@ -90,6 +102,14 @@
             "name": "Run All Services",
             "configurations": [
                 "Run Main",
+                "Run Position Aggregator",
+                "Run Price Feed Publsiher",
+                "Run Price Feed Subscriber"
+            ]
+        },
+        {
+            "name": "Run All Services Except Price Feed",
+            "configurations": [
                 "Run Mongo",
                 "Run Cache Database",
                 "Run Login Page",
