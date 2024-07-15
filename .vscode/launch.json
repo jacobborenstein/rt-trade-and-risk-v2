@@ -50,6 +50,17 @@
             }
         },
         {
+            "name": "Run Cache Database",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/redis_cache/cache_database.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/redis_cache",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }   
+        },
+        {
             "name": "Run Price Feed Publsiher",
             "type": "python",
             "request": "launch",
@@ -66,7 +77,7 @@
             "type": "python",
             "request": "launch",
             "module": "streamlit",
-            "args": ["run", "${workspaceFolder}/python/app_code/price_feed/price_subscriber.py"],
+            "args": ["run", "/home/project/rt-trade-and-risk-v2/python/app_code/price_feed/price_subscriber.py"],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {
@@ -90,27 +101,21 @@
         {
             "name": "Run All Services",
             "configurations": [
-                "Run Mongo",
                 "Run Main",
                 "Run Position Aggregator",
                 "Run Price Feed Publsiher",
-                "Run Login Page"
+                "Run Price Feed Subscriber"
             ]
         },
         {
             "name": "Run All Services Except Price Feed",
             "configurations": [
                 "Run Mongo",
-                "Run Main",
+                "Run Cache Database",
+                "Run Login Page",
                 "Run Position Aggregator",
-                "Run Login Page"
+                "Run Price Feed Publsiher"
             ]
-        },
-        {
-            "name": "Run Price Feed",
-            "configurations": [
-                "Run Price Feed Publsiher",
-                "Run Price Feed Subscriber"
-            ]}
+        }
     ]
 }

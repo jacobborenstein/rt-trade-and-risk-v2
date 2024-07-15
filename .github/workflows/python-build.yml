@@ -41,7 +41,7 @@ jobs:
           file: ./python/Dockerfile  # Explicitly specify the Dockerfile location
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ghcr.io/${{ github.repository }}/project:latest
+          tags: ghcr.io/${{ github.repository }}/project
 
       - name: Log out from GitHub Container Registry
         run: docker logout ghcr.io
