@@ -80,7 +80,14 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.post("/users/new", response_model=User)
 async def create_new_user(user: UserCreate):
-    user_exists = await check_user_exists(user.username)
+    try:
+        user_exists = await check_user_exists(user.username)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error connecting to the server"
+        )
+    
     if user_exists:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
