@@ -27,14 +27,13 @@ def cache_price_data(redis_server, ticker: str, price: float):
 
 def retrieve_price_data(redis_server, ticker: str):
 
-    #method to retrieve the cached price data from redis
-    price_data_json = redis_server.get(f"price:{ticker}")
-    
-    #if data is found, parse it back into a dictionary
-    if price_data_json:
-        price = json.loads(price_data_json)
-
-    #return the price
+    price = None
+    try:
+        price_data_json = redis_server.get(f"price:{ticker}")
+        if price_data_json:
+            price = json.loads(price_data_json)
+    except Exception as e:
+        print(f"Error retrieving price data: {e}")
     return price
 
 def cache_trade_data(redis_server, trade: Trade):
