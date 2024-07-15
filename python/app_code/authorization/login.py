@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-backend_url = "http://localhost:8000"
+backend_url = "http://main:8000"
 
 def signup():
     st.title("Sign Up")

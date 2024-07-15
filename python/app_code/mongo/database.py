@@ -1,7 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 
 # Connection stream to MongoDB server
-MONGO_DETAILS = "mongodb://localhost:27017"
+MONGO_DETAILS = "mongodb://mongo:27017"
 
 # Create a client instance of the motor library
 client = AsyncIOMotorClient(MONGO_DETAILS)
