@@ -66,7 +66,7 @@
             "type": "python",
             "request": "launch",
             "module": "streamlit",
-            "args": ["run", "/home/project/rt-trade-and-risk-v2/python/app_code/price_feed/price_subscriber.py"],
+            "args": ["run", "${workspaceFolder}/python/app_code/price_feed/price_subscriber.py"],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {
@@ -78,7 +78,7 @@
             "type": "python",
             "request": "launch",
             "module": "streamlit",
-            "args": ["run", "/home/project/rt-trade-and-risk-v2/python/app_code/authorization/login.py"],
+            "args": ["run", "${workspaceFolder}/python/app_code/authorization/login.py"],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {
@@ -94,7 +94,7 @@
                 "Run Main",
                 "Run Position Aggregator",
                 "Run Price Feed Publsiher",
-                "Run Price Feed Subscriber"
+                "Run Login Page"
             ]
         },
         {
