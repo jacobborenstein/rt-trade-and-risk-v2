@@ -65,7 +65,14 @@ async def publish_trade(trade_request: TradeRequest, current_user: User = Depend
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = await authenticate_user(form_data.username, form_data.password)
+    try:
+        user = await authenticate_user(form_data.username, form_data.password)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error connecting to the server"
+        )
+     
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
