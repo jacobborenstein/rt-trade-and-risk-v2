@@ -72,7 +72,7 @@ def cache_position_data(redis_server, position: Position):
     position_data_json = json.dumps(position.to_json())
     
     #unique key for each position. accountID + ticker
-    account_id = position.account.account_id
+    account_id = position.account_id 
     ticker = position.ticker
 
     #Store it in redis under 'position' with the key.(to retrieve the data use .get('position:<account_id>:<ticker>'). exp: .get('position:12345:APPL) 
@@ -101,7 +101,7 @@ def main():
     #set up redis and susbsribe to 'positions' channel to get postions data
     try:
         print("Connecting to Redis...")
-        r = redis.Redis(host='redis', port=6379)
+        r = redis.Redis(host='localhost', port=6379)
         pubsub = r.pubsub()
         pubsub.subscribe('positions','trades','prices_and_values')
         print("Subscribed to channels")
@@ -139,7 +139,7 @@ def main():
                         cache_position_data(r, position)
 
                         #have to publish the key to the 'position-keys' channel
-                        r.publish('position-keys', json.dumps(PositionKey(account_id = position.account.account_id, ticker = position.ticker).model_dump(by_alias=True)))
+                        r.publish('position-keys', json.dumps(PositionKey(account_id = position.account_id, ticker = position.ticker).model_dump(by_alias=True)))
 
 
                     #if the channel is 'trades', do the necessary actions
