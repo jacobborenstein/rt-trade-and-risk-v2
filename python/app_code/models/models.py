@@ -62,9 +62,10 @@ class Position(BaseModel):
     def to_json(self):
         # Convert the object to a dictionary for json
         return {
-            "account": self.account.dict(by_alias=True),
+            "accountId": self.account_id,
             "ticker": self.ticker,
             "quantity": self.quantity,
+            "positionType" : self.position_type,
             "avgPrice": self.avg_price,
             "lastUpdated": self.last_updated.isoformat() if self.last_updated else None
         }
