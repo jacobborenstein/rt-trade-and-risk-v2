@@ -1,4 +1,4 @@
-# Instruction to run code on local machine 
+# Instructions to run code on local machine 
 
 
 
