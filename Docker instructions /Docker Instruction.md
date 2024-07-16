@@ -13,7 +13,7 @@
 - scroll to the bottom of the page and click the green button that says "Generate token"
 - make sure to copy the token (once the tab is closed you won't be able to see it but can always create a new one)
 - in the Command Line copy and paste the following with your Personall access key and Github user name
-    `echo &lt;YOUR PERSONAL ACCESS TOKEN&gt;  | docker login ghcr.io -u &lt;YOUR USERNAME&gt;  --password-stdi`
+    `echo <YOUR PERSONAL ACCESS TOKEN>  | docker login ghcr.io -u <YOUR USERNAME>  --password-stdi`
 - if you get the message "Login Succeeded", you are now logged in and ready to pull the image
 
 

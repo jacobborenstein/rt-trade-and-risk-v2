@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  price_publisher:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn price_publisher:app --host 0.0.0.0 --reload --port 8080"
+    working_dir: /app/app_code/price_feed
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+      - mongo
+
+  cache_DB:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "python app_code/redis_cache/cache_database.py"
+    working_dir: /app
+    depends_on:
+      - redis
+      - mongo
+
+  main:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8000"
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - mongo
+
+  positions_ag:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "python app_code/position_agg/position_agg.py"
+    working_dir: /app
+    depends_on:
+      - redis
+      - mongo
+
+  mongo_service:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "python -m app_code.mongo.mongo"
+    working_dir: /app
+    ports:
+      - "27017:27017"
+    depends_on:
+      - redis
+      - mongo
+
+  Streamlit_UI:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "streamlit run app_code/authorization/login.py"
+    working_dir: /app
+    ports:
+      - "8501:8501"
+    depends_on:
+      - redis
+      - main
+
+volumes:
+  mongo_data:
