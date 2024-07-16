@@ -1,12 +1,13 @@
-# risk_service.py
 import redis
 import json
 import time
 from datetime import datetime
 import numpy as np
-import yfinance as yf
 from risk_calculator import RiskCalculator
-from cache_database import retrieve_position_data
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'redis_cache')))
+from cache_database import retrieve_position_data, retrieve_price_data
 
 class RiskService:
     def __init__(self, redis_host='localhost', redis_port=6379):
@@ -34,14 +35,14 @@ class RiskService:
                 time.sleep(5)
 
     def calculate_risk(self, position):
-        ticker = position['ticker']
+        ticker = position.ticker
         benchmark_ticker = 'SPY'  # Example benchmark ticker
 
         returns = self.get_historical_returns(ticker)
         benchmark_returns = self.get_benchmark_returns(benchmark_ticker)
 
         risk_measures = {
-            'account': position['account'],
+            'account': position.account.account_id,
             'ticker': ticker,
             'standard_deviation': self.risk_calculator.calculate_standard_deviation(returns),
             'sharpe_ratio': self.risk_calculator.calculate_sharpe_ratio(returns),
@@ -55,33 +56,38 @@ class RiskService:
         # Optionally, publish or store the risk measures
 
     def get_historical_returns(self, ticker):
-        if not self.data_source:
-            raise ValueError("No data source provided for fetching historical returns.")
-        
-        historical_prices = self.data_source.get_historical_prices(ticker)
+        # Fetch the historical prices from Redis
+        historical_prices = self.get_prices_from_redis(ticker)
+        if historical_prices is None:
+            print(f"No historical prices found for ticker {ticker}")
+            return []
+
         returns = self.calculate_returns_from_prices(historical_prices)
         return returns
 
     def get_benchmark_returns(self, benchmark_ticker):
-        if not self.data_source:
-            raise ValueError("No data source provided for fetching benchmark returns.")
-        
-        benchmark_prices = self.data_source.get_historical_prices(benchmark_ticker)
+        # Fetch the benchmark historical prices from Redis
+        benchmark_prices = self.get_prices_from_redis(benchmark_ticker)
+        if benchmark_prices is None:
+            print(f"No benchmark prices found for ticker {benchmark_ticker}")
+            return []
+
         benchmark_returns = self.calculate_returns_from_prices(benchmark_prices)
         return benchmark_returns
+
+    def get_prices_from_redis(self, ticker):
+        # Retrieve price data from Redis
+        prices = retrieve_price_data(self.r, ticker)
+        if prices is None:
+            print(f"No price data found for ticker {ticker}")
+            return None
+        return prices
 
     @staticmethod
     def calculate_returns_from_prices(prices):
         returns = np.diff(prices) / prices[:-1]
         return returns
 
-class DataSource:
-    def get_historical_prices(self, ticker):
-        stock_data = yf.Ticker(ticker)
-        historical_data = stock_data.history(period="1y")  # Fetches 1 year of data
-        return historical_data['Close'].values
-
 if __name__ == "__main__":
-    data_source = DataSource()
-    risk_service = RiskService(data_source=data_source)
+    risk_service = RiskService()
     risk_service.run()
