@@ -126,6 +126,13 @@ async def get_price_for_ticker(ticker: str) -> dict:
                                             sort=[("last_updated", -1)])
     return price
 
+async def get_prices_from_datetime(ticker: str, start_time: datetime) -> list[dict]:
+    prices = await price_collection.find({
+        "ticker": ticker,
+        "time": {"$gte": start_time}
+    }).sort("time", 1).to_list(length=None)
+    return prices
+
 # Add User
 async def create_user(user: UserInDB) -> dict:
     user_data = user.model_dump()
