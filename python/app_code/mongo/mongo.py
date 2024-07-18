@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 channels = ['accounts', 'trades-to-mongo', 'positions', 'prices', 'prices_and_values']
 
 async def main():
-    r = redis.Redis(host='redis', port=6379)
+    r = redis.Redis(host='localhost', port=6379)
     pubsub = r.pubsub()
     pubsub.subscribe(channels)
     while True:

@@ -50,6 +50,17 @@
             }
         },
         {
+            "name": "Run PL",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/PNL/profits_n_losses.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/PNL",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
             "name": "Run Cache Database",
             "type": "python",
             "request": "launch",
@@ -104,7 +115,10 @@
                 "Run Main",
                 "Run Position Aggregator",
                 "Run Price Feed Publsiher",
-                "Run Price Feed Subscriber"
+                "Run Mongo",
+                "Run Cache Database",
+                "Run Login Page",
+                "Run PL"
             ]
         },
         {
