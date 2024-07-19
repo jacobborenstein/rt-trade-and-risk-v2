@@ -83,7 +83,7 @@
             }
         },
         {
-            "name": "Run Login Page",
+            "name": "Run Streamlit Page",
             "type": "python",
             "request": "launch",
             "module": "streamlit",
@@ -93,19 +93,7 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}"
             }
-        },
-        {
-            "name": "Run Second Page",
-            "type": "python",
-            "request": "launch",
-            "module": "streamlit",
-            "args": ["run", "${workspaceFolder}/python/app_code/authorization/newPage.py"],
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}"
-            }
-        }              
+        },            
     ],
     "compounds": [
         {
@@ -116,7 +104,7 @@
                 "Run Price Feed Publisher",
                 "Run Mongo",
                 "Run Cache Database",
-                "Run Login Page",
+                "Run Streamlit Page",
                 "Run PL"
             ]
         },
