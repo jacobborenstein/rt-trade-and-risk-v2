@@ -1,9 +1,9 @@
 import sys
 import os
-import asyncio
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
+import asyncio
 from app_code.models.models import Trade, Account, Position, TickerPrice
 from app_code.mongo.crud import add_account, get_account, get_random_account, add_trade, add_position, get_trades_by_account_by_ticker, get_recent_position, add_ticker_price, get_price_for_ticker
 import redis

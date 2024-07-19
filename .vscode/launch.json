@@ -50,6 +50,17 @@
             }
         },
         {
+            "name": "Run PL",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/PNL/profits_n_losses.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/PNL",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
             "name": "Run Cache Database",
             "type": "python",
             "request": "launch",
@@ -61,27 +72,14 @@
             }   
         },
         {
-            "name": "Run Price Feed Publsiher",
+            "name": "Run Price Feed Publisher",
             "type": "python",
             "request": "launch",
-            "module": "uvicorn",
-            "args": ["price_publisher:app", "--reload", "--port", "8080"],
+            "program": "${workspaceFolder}/python/app_code/price_feed/price_publisher.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/python/app_code/price_feed",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}/python/app_code/price_feed"
-            }
-        },
-        {
-            "name": "Run Price Feed Subscriber",
-            "type": "python",
-            "request": "launch",
-            "module": "streamlit",
-            "args": ["run", "/home/project/rt-trade-and-risk-v2/python/app_code/price_feed/price_subscriber.py"],
-            "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}"
+                "PYTHONPATH": "${workspaceFolder}/python"
             }
         },
         {
@@ -89,7 +87,19 @@
             "type": "python",
             "request": "launch",
             "module": "streamlit",
-            "args": ["run", "${workspaceFolder}/python/app_code/authorization/login.py"],
+            "args": ["run", "${workspaceFolder}/python/app_code/authorization/streamlit_main.py"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+        {
+            "name": "Run Second Page",
+            "type": "python",
+            "request": "launch",
+            "module": "streamlit",
+            "args": ["run", "${workspaceFolder}/python/app_code/authorization/newPage.py"],
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {
@@ -103,19 +113,12 @@
             "configurations": [
                 "Run Main",
                 "Run Position Aggregator",
-                "Run Price Feed Publsiher",
-                "Run Price Feed Subscriber"
-            ]
-        },
-        {
-            "name": "Run All Services Except Price Feed",
-            "configurations": [
+                "Run Price Feed Publisher",
                 "Run Mongo",
                 "Run Cache Database",
                 "Run Login Page",
-                "Run Position Aggregator",
-                "Run Price Feed Publsiher"
+                "Run PL"
             ]
-        }
+        },
     ]
 }

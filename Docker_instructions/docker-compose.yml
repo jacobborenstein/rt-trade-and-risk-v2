@@ -15,10 +15,8 @@ services:
 
   price_publisher:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
-    command: sh -c "uvicorn price_publisher:app --host 0.0.0.0 --reload --port 8080"
+    command: sh -c "python app_code/price_feed/price_publisher.py"
     working_dir: /app/app_code/price_feed
-    ports:
-      - "8080:8080"
     depends_on:
       - redis
       - mongo
@@ -61,7 +59,7 @@ services:
 
   Streamlit_UI:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
-    command: sh -c "streamlit run app_code/authorization/login.py"
+    command: sh -c "streamlit run app_code/authorization/streamlit_main.py"
     working_dir: /app
     ports:
       - "8501:8501"
