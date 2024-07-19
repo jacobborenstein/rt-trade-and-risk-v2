@@ -6,13 +6,6 @@ services:
     ports:
       - "6379:6379"
 
-  mongo:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-
   price_publisher:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
     command: sh -c "python app_code/price_feed/price_publisher.py"
