@@ -9,7 +9,7 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-r = redis.Redis(host='localhost', port=6379)
+r = redis.Redis(host='redis', port=6379)
 r.ping()
 
 # Helper function to convert a Pydantic model to a dict suitable for MongoDB
@@ -17,6 +17,7 @@ def account_helper(account: Account) -> dict:
     return {
         "account_id": account.account_id,
         "account_name": account.account_name,
+        # "account_type": account.account_type
     }
 
 # Add Account
@@ -155,8 +156,25 @@ async def update_user_permissions(username: str, can_read: List[str], can_write:
 
 async def get_user_accounts(username: str) -> dict:
     user = await user_collection.find_one({"username": username})
-    accounts = {
+    account_ids = {
         "can_read": user["can_read"],
         "can_write": user["can_write"]
     }
+    return account_ids
+
+async def get_user_write_accounts(username: str) -> list:
+    user = await user_collection.find_one({"username": username})
+    accounts = []
+    account_ids = {
+        "can_read": user["can_read"],
+        "can_write": user["can_write"]
+    }
+    for account_id in account_ids["can_write"]:
+        account_db = await account_collection.find_one({"account_id": account_id})
+        account = Account(
+            accountId=account_db["account_id"],
+            accountName=account_db["account_name"],
+            # accountType=account_db["account_type"]
+        )
+        accounts.append(account)
     return accounts

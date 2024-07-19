@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 import streamlit as st
 import requests
 import pandas as pd
@@ -5,8 +9,9 @@ import redis
 import json
 from pydantic import BaseModel
 from datetime import timedelta
+from app_code.mongo.crud import get_account
 
-backend_url = "http://main:8000"
+backend_url = "http://localhost:8000"
 
 class Position(BaseModel):
     account: dict
@@ -81,14 +86,27 @@ def login():
 def fetch_account_ids():
     headers = {"Authorization": f"Bearer {st.session_state['token']}"}
     try:
-        response = requests.get(f"{backend_url}/users/accounts", headers=headers)
+        response = requests.get(f"{backend_url}/users/accountIds", headers=headers)
         response.raise_for_status()
         accounts = response.json()
         return accounts["can_write"]
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching account IDs: {e}")
         return []
+    
+def get_accounts():
+    headers = {"Authorization": f"Bearer {st.session_state['token']}"}
+    try:
+        response = requests.get(f"{backend_url}/users/accounts", headers=headers)
+        response.raise_for_status()
+        accounts = response.json()
+        st.write(f"Accounts: {accounts}")
+        return accounts
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error fetching accounts: {e}")
+        return []
 
+    
 # Retrieve Position Data
 def retrieve_position_data(redis_server, account_id, ticker):
     position_data_json = redis_server.get(f"position:{account_id}:{ticker}")
@@ -117,7 +135,7 @@ def read_tickers_from_file():
 # Get Redis Connection
 def get_redis_connection():
     try:
-        r = redis.Redis(host='localhost', port=6379)
+        r = redis.Redis(host='redis', port=6379)
         return r
     except Exception as e:
         st.error(f"Error connecting to Redis: {e}")
@@ -134,6 +152,7 @@ def fetch_all_positions_and_prices(redis_server, account_id, tickers):
             position_data['current_price'] = price if price else "N/A"
             positions.append(position_data)
     return pd.DataFrame(positions)
+
 
 # Trading Dashboard
 def trading_dashboard():
@@ -214,13 +233,20 @@ def trading_dashboard():
 
         account_ids = fetch_account_ids()
         if account_ids:
-            account_id = st.selectbox("Account ID", account_ids, key="single_trade_account_id")
+            accounts = get_accounts()
+            account_names = []
+            for account in accounts:
+                if account:
+                    account_names.append(account["account_name"])
+            account_name = st.selectbox("Account", account_names, key="single_trade_account_id")
             ticker = st.text_input("Ticker", key="single_trade_ticker")
             quantity = st.number_input("Quantity", min_value=1, step=1, key="single_trade_quantity")
             direction = st.selectbox("Direction", ["BUY", "SELL"], key="single_trade_direction")
 
             if st.button("Book", key="single_trade_submit"):
-                if account_id and ticker and quantity:
+                if account_name and ticker and quantity:
+                    selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
+                    account_id = selected_account["account_id"]
                     headers = {"Authorization": f"Bearer {st.session_state['token']}"}
                     response = requests.post(f"{backend_url}/publish/trade", json={
                     "account_id": account_id,
@@ -251,6 +277,7 @@ def trading_dashboard():
             }, headers=headers)
             if response.status_code == 200:
                 st.success("Account created successfully!")
+                st.experimental_rerun()
             else:
                 st.error("Error creating account")
                 st.experimental_rerun()
