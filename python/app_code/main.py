@@ -134,7 +134,7 @@ async def generate_trade(account_id: str, user_id: str, ticker: str, quantity: i
 
     primaryKey = PrimaryKey(accountId=account_id, tradeId=generate_trade_id(ticker))
     # executed_price = retrieve_price_data(r, ticker)
-    executed_price = 100
+    executed_price = retrieve_price_data(r, ticker)
     if executed_price is None:
         raise HTTPException(status_code=500, detail="Failed to retrieve price data for the ticker")
     logger.info(f"Creating trade with executedUser: {user_id}")

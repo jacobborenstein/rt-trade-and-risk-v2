@@ -18,7 +18,7 @@ from app_code.models.models import Trade
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-r = redis.Redis(host='localhost', port=6379)
+r = redis.Redis(host='redis', port=6379)
 pubsub = r.pubsub()
 pubsub.subscribe('position-keys')
 r.ping()

@@ -12,11 +12,18 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   price_publisher:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
-    command: sh -c "python app_code/price_feed/price_publisher.py"
+    command: sh -c "uvicorn price_publisher:app --host 0.0.0.0 --reload --port 8080"
     working_dir: /app/app_code/price_feed
+    ports:
+      - "8080:8080"
     depends_on:
       - redis
       - mongo
@@ -51,8 +58,6 @@ services:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
     command: sh -c "python -m app_code.mongo.mongo"
     working_dir: /app
-    ports:
-      - "27017:27017"
     depends_on:
       - redis
       - mongo
