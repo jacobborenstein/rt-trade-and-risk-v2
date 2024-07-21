@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from datetime import timedelta
 from app_code.mongo.crud import get_account
 
-backend_url = "http://localhost:8000"
+backend_url = "http://main:8000"
 
 class Position(BaseModel):
     account: dict
