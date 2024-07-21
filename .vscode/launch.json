@@ -93,7 +93,6 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}"
             }
-        },            
     ],
     "compounds": [
         {

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import logging
 import uuid
 import random
-from app_code.mongo.crud import get_user_accounts, update_user_permissions, get_recent_position, create_user, check_user_exists
+from app_code.mongo.crud import get_user_write_accounts, get_user_accounts, update_user_permissions, get_recent_position, create_user, check_user_exists
 from app_code.authorization.auth import authenticate_user, create_access_token, get_current_user, get_password_hash
 from app_code.redis_cache.cache_database import retrieve_price_data
 
@@ -31,7 +31,7 @@ async def publish_account(account_name: str = Body(..., embed=True), current_use
     await update_user_permissions(current_user.username, current_user.can_read, current_user.can_write)
     
 
-    account = Account(accountId=account_id, accountName=account_name, accountType=AccountType.Trader)
+    account = Account(accountId=account_id, accountName=account_name, accountType=AccountType.TRADER)
     r.publish('accounts', account.model_dump_json(by_alias=True))
     return {"status": "Created new account: " + account.account_id}
 
@@ -116,9 +116,14 @@ async def create_new_user(user: UserCreate):
     created_user = await create_user(user_in_db)
     return created_user
 
-@app.get("/users/accounts")
+@app.get("/users/accountIds")
 async def get_user_account(current_user: User = Depends(get_current_user)):
     return await get_user_accounts(current_user.username)
+
+@app.get("/users/accounts")
+async def get_user_write_account(current_user: User = Depends(get_current_user)):
+    accounts = await get_user_write_accounts(current_user.username)
+    return [account.dict() for account in accounts]
     
     
 
