@@ -17,7 +17,7 @@ class AccountType(str, Enum):
 class Account(BaseModel):
     account_id: Optional[str] = Field(..., alias="accountId")
     account_name: str = Field(..., alias="accountName")
-    account_type: AccountType = Field(..., alias="accountType")
+    # account_type: AccountType = Field(..., alias="accountType")
 
 
 
