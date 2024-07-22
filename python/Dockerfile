@@ -7,9 +7,11 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
+COPY python/tickers.txt /app/python/tickers.txt
+
 # Install any needed packages specified in requirements.txt
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txtq    3
 
 # Expose ports for Streamlit and Uvicorn
 EXPOSE 8000 8501
