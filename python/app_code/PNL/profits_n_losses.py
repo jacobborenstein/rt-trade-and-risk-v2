@@ -11,6 +11,7 @@ import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from app_code.redis_cache.cache_database import retrieve_position_data, PositionKey, retrieve_price_data
 from app_code.mongo.crud import get_trades_by_account_by_ticker
+from app_code.mongo.crud import get_first_price_of_day
 from app_code.models.models import Direction
 from app_code.models.models import Trade
 
@@ -41,7 +42,7 @@ def calculate_pnl(position):
     # Calculate the unrealized PnL synchronously
     unrealized_pnl = calculate_unrealized_pnl_all_time(position, current_price)
 
-    unrealized_pnl_today = calculate_unrealized_pnl_today(position, current_price)
+    unrealized_pnl_today = loop.run_until_complete(calculate_unrealized_pnl_today(position, current_price))
     
     # Log the PnL values
     #logger.info(f"Current Price: {current_price}, Realized PnL: {realized_pnl}, Unrealized PnL: {unrealized_pnl}")
@@ -95,9 +96,20 @@ async def calculate_realized_pnl_today(position):
                     earned += trade.quantity * trade.executed_price
         return earned - spent
 
-def calculate_unrealized_pnl_today(position, current_price):
-        price_day_start = 0
-        return 10
+
+async def calculate_unrealized_pnl_today(position, current_price):
+    start_of_today = datetime.today()
+    prices_day_start = await get_first_price_of_day(position.ticker, start_of_today)
+    
+    logger.info(start_of_today)
+    logger.info(prices_day_start)
+    
+    if prices_day_start:
+        price_day_start = prices_day_start[0]['price']  # Assuming the price data is in a field called 'price'
+        return (current_price - price_day_start) * position.quantity
+    else:
+        logger.error("No prices available for the start of the day.")
+        return None
 
 while True:
     try:

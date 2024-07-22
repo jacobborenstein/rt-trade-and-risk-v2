@@ -1,6 +1,6 @@
 from app_code.models.models import Account, Trade, Position, PrimaryKey, Direction, TickerPrice, UserInDB
 from app_code.mongo.database import account_collection, trade_collection, position_collection, price_collection, user_collection
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 import redis
 import logging
@@ -160,3 +160,18 @@ async def get_user_accounts(username: str) -> dict:
         "can_write": user["can_write"]
     }
     return accounts
+
+async def get_first_price_of_day(ticker: str, date: datetime) -> Optional[dict]:
+    start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = start_of_day + timedelta(days=1)
+    
+    prices = await price_collection.find({
+        "ticker": ticker,
+        "time": {"$gte": start_of_day, "$lt": end_of_day}
+    }).sort("time", 1).to_list(length=1)
+    
+    if prices:
+        return prices[0]
+    else:
+        logger.info(f"No prices found for ticker {ticker} on {date.strftime('%Y-%m-%d')}")
+        return None
