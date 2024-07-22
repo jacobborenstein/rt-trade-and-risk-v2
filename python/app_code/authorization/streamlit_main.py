@@ -9,7 +9,7 @@ import redis
 import json
 import time
 from pydantic import BaseModel
-from app_code.mongo.crud import get_account
+
 
 backend_url = "http://main:8000"
 
@@ -130,7 +130,7 @@ def retrieve_price_data(redis_server, ticker):
 # Read Tickers from File
 def read_tickers_from_file():
     try:
-        with open('tickers.txt', 'r') as file:
+        with open('/app/python/tickers.txt', 'r') as file:
             tickers = file.read().splitlines()
         return tickers
     except Exception as e:
@@ -194,42 +194,72 @@ def trading_dashboard():
             st.error("User has no accounts")
 
     with tabs[2]:
-        st.header("Bulk Booking Parameters")
-        bulk_booking_data = [
-            {"Parameter": "Param1", "Value": "Value1"},
-            {"Parameter": "Param2", "Value": "Value2"},
-            {"Parameter": "Param3", "Value": "Value3"}
-        ]
-        bulk_booking_df = pd.DataFrame(bulk_booking_data)
-        st.dataframe(bulk_booking_df)
-
-        st.subheader("Execute Bulk Booking")
-        param1 = st.selectbox("Parameter 1", ["Option 1", "Option 2", "Option 3"], key="bulk_booking_param1")
-        param2 = st.selectbox("Parameter 2", ["Option A", "Option B", "Option C"], key="bulk_booking_param2")
-        param3 = st.selectbox("Parameter 3", ["Value X", "Value Y", "Value Z"], key="bulk_booking_param3")
-
+        st.header("Bulk Booking")
         account_ids = fetch_account_ids()
         if account_ids:
-            account_id = st.selectbox("Account ID", account_ids, key="bulk_booking_account_id")
-            ticker = st.text_input("Ticker", key="bulk_booking_ticker")
-            quantity = st.number_input("Quantity", min_value=1, step=1, key="bulk_booking_quantity")
-            direction = st.selectbox("Direction", ["BUY", "SELL"], key="bulk_booking_direction")
+            st.session_state.pop("accounts", None)
+            accounts = get_accounts()
+            account_names = [account["account_name"] for account in accounts if account]
+            account_name = st.selectbox("Account", account_names, key="multi_trade_account_id")
+            
+            tickers_path = '/app/python/tickers.txt'
+            
+            tickers_path_development = 'python/tickers.txt'
+            try:
+                with open(tickers_path, 'r') as file:
+                    tickers = file.read().splitlines()
+            except Exception as e:
+                st.error(f"Error reading tickers from file: {e}")
 
-            if st.button("Book", key="bulk_booking_book"):
-                trade_request = {
-                    "account_id": account_id,
-                    "ticker": ticker,
-                    "quantity": quantity,
-                    "direction": direction
-                }
+            if "multi_trade_data" not in st.session_state:
+                st.session_state.multi_trade_data = []
 
-                response = requests.post(f"{backend_url}/publish/trade", json=trade_request)
+            def add_booking():
+                st.session_state.multi_trade_data.append({"ticker": "", "quantity": 1, "direction": "BUY"})
+
+            def update_trade(index, key, value):
+                st.session_state.multi_trade_data[index][key] = value
+
+            if st.button("Add Booking"):
+                add_booking()
+
+            for i, trade in enumerate(st.session_state.multi_trade_data):
+                ticker = st.selectbox("Ticker", tickers, key=f"multi_trade_ticker_{i}", index=0 if trade["ticker"] == "" else tickers.index(trade["ticker"]))
+                quantity = st.number_input("Quantity", min_value=1, step=1, key=f"multi_trade_quantity_{i}", value=trade["quantity"])
+                direction = st.selectbox("Direction", ["BUY", "SELL"], key=f"multi_trade_direction_{i}", index=0 if trade["direction"] == "BUY" else 1)
                 
-                if response.status_code == 200:
-                    st.success("Bulk booking executed successfully!")
-                else:
-                    st.error(f"Failed to execute bulk booking: {response.text}")
-                st.experimental_rerun()
+                update_trade(i, "ticker", ticker)
+                update_trade(i, "quantity", quantity)
+                update_trade(i, "direction", direction)
+
+            if st.button("Submit All Trades"):
+                if account_name and st.session_state.multi_trade_data:
+                    selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
+                    account_id = selected_account["account_id"]
+                    headers = {"Authorization": f"Bearer {st.session_state['token']}"}
+
+                    all_trades_successful = True
+                    for trade in st.session_state.multi_trade_data:
+                        response = requests.post(f"{backend_url}/publish/trade", json={
+                            "account_id": account_id,
+                            "ticker": trade["ticker"],
+                            "quantity": trade["quantity"],
+                            "direction": trade["direction"]
+                        }, headers=headers)
+
+                        if response.status_code != 200:
+                            all_trades_successful = False
+                            st.error(f"Error submitting trade: {response.text}")
+                            break
+
+                    if all_trades_successful:
+                        st.success("All trades submitted successfully!")
+                        st.session_state.multi_trade_data = []
+                    else:
+                        st.error("One or more trades failed to submit.")
+                    
+                    time.sleep(5)
+                    st.experimental_rerun()
         else:
             st.error("User has no accounts")
 
