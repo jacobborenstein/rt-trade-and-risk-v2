@@ -1,3 +1,8 @@
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import redis
 import json
 import time
@@ -5,10 +10,10 @@ from datetime import datetime, timedelta
 import numpy as np
 import yfinance as yf
 from risk_calculator import RiskCalculator
-from cache_database import retrieve_position_data
+from redis_cache.cache_database import retrieve_position_data
 
 class RiskService:
-    def __init__(self, data_source, redis_host='localhost', redis_port=6379):
+    def __init__(self, data_source, redis_host='redis', redis_port=6379):
         self.r = redis.Redis(host=redis_host, port=6379)
         self.pubsub = self.r.pubsub()
         self.pubsub.subscribe('position-keys')
