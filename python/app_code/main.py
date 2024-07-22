@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import logging
 import uuid
 import random
-from app_code.mongo.crud import get_user_write_accounts, get_user_accounts, update_user_permissions, get_recent_position, create_user, check_user_exists
+from app_code.mongo.crud import get_user_write_accounts, get_user_accounts, update_user_permissions, get_recent_position, create_user, check_user_exists,get_prices_from_datetime
 from app_code.authorization.auth import authenticate_user, create_access_token, get_current_user, get_password_hash
 from app_code.redis_cache.cache_database import retrieve_price_data
 
@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-r = redis.Redis(host='redis', port=6379)
+r = redis.Redis(host='localhost', port=6379)
 r.ping()
 
 
@@ -157,3 +157,13 @@ async def generate_trade(account_id: str, user_id: str, ticker: str, quantity: i
 
 def generate_trade_id(ticker: str) -> str:
     return ticker + "_" + str(uuid.uuid4()) + "_" + str(datetime.now().timestamp())
+
+@app.get("/prices/{ticker}")
+async def get_price(ticker: str):
+    today_start = datetime.combine(datetime.now().date(), datetime.min.time())
+    today_end = today_start + timedelta(days=1)
+    
+    logger.info(f"Getting price for {ticker} from {today_start} to {today_end}")
+    
+    prices = await get_prices_from_datetime(ticker, today_start, today_end)
+    return prices

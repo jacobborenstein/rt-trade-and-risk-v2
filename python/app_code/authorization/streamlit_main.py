@@ -11,7 +11,7 @@ import time
 from pydantic import BaseModel
 
 
-backend_url = "http://main:8000"
+backend_url = "http://localhost:8000"
 
 class Position(BaseModel):
     account: dict
@@ -140,7 +140,7 @@ def read_tickers_from_file():
 # Get Redis Connection
 def get_redis_connection():
     try:
-        r = redis.Redis(host='redis', port=6379)
+        r = redis.Redis(host='localhost', port=6379)
         return r
     except Exception as e:
         st.error(f"Error connecting to Redis: {e}")
@@ -275,8 +275,10 @@ def trading_dashboard():
             account_name = st.selectbox("Account", account_names, key="single_trade_account_id")
             
             tickers_path = '/app/python/tickers.txt'
+            # tickers_path_development = '/app/python/tickers.txt'
+
             try:
-                with open(tickers_path, 'r') as file:
+                with open(tickers_path_development, 'r') as file:
                     tickers = file.read().splitlines()
             except Exception as e:
                 st.error(f"Error reading tickers from file: {e}")
