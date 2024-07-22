@@ -1,4 +1,4 @@
-from app_code.models.models import Account, Trade, Position, PrimaryKey, Direction, TickerPrice, UserInDB
+from app_code.models.models import TickerPrice, Account, Trade, Position, PrimaryKey, Direction, TickerPrice, UserInDB
 from app_code.mongo.database import account_collection, trade_collection, position_collection, price_collection, user_collection
 from datetime import datetime
 from typing import Optional, List
@@ -9,7 +9,7 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-r = redis.Redis(host='redis', port=6379)
+r = redis.Redis(host='localhost', port=6379)
 r.ping()
 
 # Helper function to convert a Pydantic model to a dict suitable for MongoDB
@@ -127,12 +127,19 @@ async def get_price_for_ticker(ticker: str) -> dict:
                                             sort=[("time", -1)])
     return price
 
-async def get_prices_from_datetime(ticker: str, start_time: datetime) -> list[dict]:
+async def get_prices_from_datetime(ticker: str, start_time: datetime, end_time: datetime) -> list[dict]:
+    start_time_str = start_time.isoformat()
+    end_time_str = end_time.isoformat()
+
     prices = await price_collection.find({
         "ticker": ticker,
-        "time": {"$gte": start_time}
+        "time": {
+            "$gte": start_time_str,
+            "$lt": end_time_str
+        }
     }).sort("time", 1).to_list(length=None)
-    return prices
+    return [TickerPrice(**price) for price in prices]
+
 
 # Add User
 async def create_user(user: UserInDB) -> dict:
