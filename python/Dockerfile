@@ -11,7 +11,7 @@ COPY /tickers.txt /app/python/tickers.txt
 
 # Install any needed packages specified in requirements.txt
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txtq    3
+RUN pip install --no-cache-dir -r /app/requirements.txt    3
 
 # Expose ports for Streamlit and Uvicorn
 EXPOSE 8000 8501
