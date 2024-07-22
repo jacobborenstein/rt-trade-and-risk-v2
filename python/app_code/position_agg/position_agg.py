@@ -26,7 +26,7 @@ def create_position(account_id: str, ticker: str, trades: List[Trade]) -> Positi
             elif trade.direction == Direction.SELL:
                 quantity -= trade.quantity
                 total_price -= trade.quantity * trade.executed_price
-    avg_price = total_price / quantity if quantity != 0 else 0.0
+    avg_price = round(total_price / quantity, 2) if quantity != 0 else 0.0
     position_type = "LONG" if quantity > 0 else "SHORT"
     return Position(
         accountId=account_id,

@@ -140,7 +140,7 @@ def read_tickers_from_file():
 # Get Redis Connection
 def get_redis_connection():
     try:
-        r = redis.Redis(host='main', port=6379)
+        r = redis.Redis(host='redis', port=6379)
         return r
     except Exception as e:
         st.error(f"Error connecting to Redis: {e}")
@@ -244,7 +244,7 @@ def trading_dashboard():
             account_names = [account["account_name"] for account in accounts if account]
             account_name = st.selectbox("Account", account_names, key="single_trade_account_id")
             
-            tickers_path = '/home/project/rt-trade-and-risk-v2/python/app_code/tickers.txt'
+            tickers_path = '/app/python/tickers.txt'
             try:
                 with open(tickers_path, 'r') as file:
                     tickers = file.read().splitlines()
