@@ -63,7 +63,13 @@ async def publish_trade(trade_request: TradeRequest, current_user: User = Depend
     trade_data['executedTime'] = trade_data['executedTime'].isoformat()  # Convert datetime to string
     r.publish('trades-to-mongo', json.dumps(trade_data))
     logger.info(f"main-3) published trade: {trade_data}")
-    return {"status": "Trade Sent"}
+    
+    total_price = trade_data['quantity'] * trade_data['executedPrice']
+    
+    return {
+        "status": "Trade Sent",
+        "total_price": total_price
+    }
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):

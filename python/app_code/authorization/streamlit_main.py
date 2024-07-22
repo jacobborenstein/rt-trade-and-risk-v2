@@ -7,8 +7,8 @@ import requests
 import pandas as pd
 import redis
 import json
+import time
 from pydantic import BaseModel
-from datetime import timedelta
 from app_code.mongo.crud import get_account
 
 backend_url = "http://main:8000"
@@ -56,6 +56,9 @@ def signup():
                 st.error("Username already exists")
             else:
                 st.error("Error creating user")
+    if st.button("Back"):
+        st.session_state["page"] = "home"
+        st.experimental_rerun()
 
 # Login Page
 def login():
@@ -81,6 +84,9 @@ def login():
                 st.error("Incorrect username or password")
             else:
                 st.error("Error logging in")
+    if st.button("Back"):
+        st.session_state["page"] = "home"
+        st.experimental_rerun()
 
 # Fetch Account IDs
 def fetch_account_ids():
@@ -100,7 +106,6 @@ def get_accounts():
         response = requests.get(f"{backend_url}/users/accounts", headers=headers)
         response.raise_for_status()
         accounts = response.json()
-        st.write(f"Accounts: {accounts}")
         return accounts
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching accounts: {e}")
@@ -135,7 +140,7 @@ def read_tickers_from_file():
 # Get Redis Connection
 def get_redis_connection():
     try:
-        r = redis.Redis(host='redis', port=6379)
+        r = redis.Redis(host='main', port=6379)
         return r
     except Exception as e:
         st.error(f"Error connecting to Redis: {e}")
@@ -158,7 +163,7 @@ def fetch_all_positions_and_prices(redis_server, account_id, tickers):
 def trading_dashboard():
     st.title("Trading Dashboard")
 
-    tabs = st.tabs(["Trade View", "Position View", "Bulk Booking", "Single Trade", "Account Manager"])
+    tabs = st.tabs(["Trade View", "Position View", "Bulk Booking", "Single Trade", "Account Manager", "PNL", "Risk"])
 
     with tabs[0]:
         st.header("Trade View")
@@ -186,7 +191,7 @@ def trading_dashboard():
             else:
                 st.error("Unable to connect to Redis.")
         else:
-            st.error("No account IDs available.")
+            st.error("User has no accounts")
 
     with tabs[2]:
         st.header("Bulk Booking Parameters")
@@ -226,20 +231,27 @@ def trading_dashboard():
                     st.error(f"Failed to execute bulk booking: {response.text}")
                 st.experimental_rerun()
         else:
-            st.error("No account IDs available.")
+            st.error("User has no accounts")
 
     with tabs[3]:
         st.header("Single trade")
 
         account_ids = fetch_account_ids()
         if account_ids:
+            st.session_state.pop("accounts", None)
+        
             accounts = get_accounts()
-            account_names = []
-            for account in accounts:
-                if account:
-                    account_names.append(account["account_name"])
+            account_names = [account["account_name"] for account in accounts if account]
             account_name = st.selectbox("Account", account_names, key="single_trade_account_id")
-            ticker = st.text_input("Ticker", key="single_trade_ticker")
+            
+            tickers_path = '/home/project/rt-trade-and-risk-v2/python/app_code/tickers.txt'
+            try:
+                with open(tickers_path, 'r') as file:
+                    tickers = file.read().splitlines()
+            except Exception as e:
+                st.error(f"Error reading tickers from file: {e}")
+            
+            ticker = st.selectbox("Ticker", tickers, key="single_trade_ticker")
             quantity = st.number_input("Quantity", min_value=1, step=1, key="single_trade_quantity")
             direction = st.selectbox("Direction", ["BUY", "SELL"], key="single_trade_direction")
 
@@ -256,14 +268,18 @@ def trading_dashboard():
                     }, headers=headers)
                     
                     if response.status_code == 200:
-                        st.success("Trade submitted successfully!")
+                        response_data = response.json()
+                        total_price = response_data.get('total_price', 'Unknown')
+                        st.success(f"Trade submitted successfully! Total price: ${total_price % 1000}")                   
                     elif response.status_code == 401:
                         st.error("User cannot create trades for this account")
                     else:
-                        st.error(f"Error submitting trade")
-                        st.experimental_rerun()
+                        st.error(f"Error submitting trade: {response.text}")
+
+                    time.sleep(5)
+                    st.experimental_rerun()
         else:
-            st.error("No account IDs available.")
+            st.error("User has no accounts")
     
     with tabs[4]:
         st.header("Account Manager")
@@ -277,10 +293,15 @@ def trading_dashboard():
             }, headers=headers)
             if response.status_code == 200:
                 st.success("Account created successfully!")
+                # Force a reload of accounts in session state
+                st.session_state.pop("accounts", None)
                 st.experimental_rerun()
             else:
                 st.error("Error creating account")
                 st.experimental_rerun()
+        if st.button("Logout"):
+            st.session_state["token"] = None
+            st.experimental_rerun()
 
 # Main Function
 def main():

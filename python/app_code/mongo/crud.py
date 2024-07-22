@@ -124,7 +124,7 @@ async def add_ticker_price(ticker_price: TickerPrice) -> dict:
 
 async def get_price_for_ticker(ticker: str) -> dict:
     price = await price_collection.find_one({"ticker": ticker},
-                                            sort=[("last_updated", -1)])
+                                            sort=[("time", -1)])
     return price
 
 async def get_prices_from_datetime(ticker: str, start_time: datetime) -> list[dict]:
