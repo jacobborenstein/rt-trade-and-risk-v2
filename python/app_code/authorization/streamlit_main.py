@@ -278,7 +278,7 @@ def trading_dashboard():
             # tickers_path_development = '/app/python/tickers.txt'
 
             try:
-                with open(tickers_path_development, 'r') as file:
+                with open(tickers_path, 'r') as file:
                     tickers = file.read().splitlines()
             except Exception as e:
                 st.error(f"Error reading tickers from file: {e}")
