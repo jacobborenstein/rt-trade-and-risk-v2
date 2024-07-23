@@ -11,7 +11,7 @@ import time
 from pydantic import BaseModel
 
 
-backend_url = "http://localhost:8000"
+backend_url = "http://main:8000"
 
 class Position(BaseModel):
     account: dict
@@ -140,7 +140,7 @@ def read_tickers_from_file():
 # Get Redis Connection
 def get_redis_connection():
     try:
-        r = redis.Redis(host='localhost', port=6379)
+        r = redis.Redis(host='redis', port=6379)
         return r
     except Exception as e:
         st.error(f"Error connecting to Redis: {e}")
