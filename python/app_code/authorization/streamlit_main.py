@@ -149,7 +149,7 @@ def read_tickers_from_file():
     tickers_path = '/app/python/tickers.txt'
     tickers_path_development = 'python/tickers.txt'
     try:
-        with open(tickers_path_development, 'r') as file:
+        with open(tickers_path, 'r') as file:
             tickers = file.read().splitlines()
         return tickers
     except Exception as e:
@@ -256,7 +256,7 @@ def trading_dashboard():
             tickers_path = '/app/python/tickers.txt'
             tickers_path_dev = 'python/tickers.txt'
             try:
-                with open(tickers_path_dev, 'r') as file:
+                with open(tickers_path, 'r') as file:
                     tickers = file.read().splitlines()
             except Exception as e:
                 st.error(f"Error reading tickers from file: {e}")
@@ -348,7 +348,7 @@ def trading_dashboard():
             # tickers_path_development = '/app/python/tickers.txt'
 
             try:
-                with open(tickers_path_dev, 'r') as file:
+                with open(tickers_path, 'r') as file:
                     tickers = file.read().splitlines()
             except Exception as e:
                 st.error(f"Error reading tickers from file: {e}")

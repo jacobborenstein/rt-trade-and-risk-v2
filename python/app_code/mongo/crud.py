@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Optional, List
 import redis
 import logging
-import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
