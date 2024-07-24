@@ -5,11 +5,21 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 import streamlit as st
 import requests
 import pandas as pd
+import re
 import redis
 import json
-import time
+import time 
+from datetime import timedelta
 from pydantic import BaseModel
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+st.set_page_config(page_title="Trading Dashboard", page_icon=":chart_with_upwards_trend:", layout="wide")
+
+refresh_rate = 10
 
 backend_url = "http://main:8000"
 
@@ -18,6 +28,8 @@ class Position(BaseModel):
     ticker: str
     quantity: int
     average_price: float
+
+
 
 # Homepage
 def homepage():
@@ -117,7 +129,12 @@ def retrieve_position_data(redis_server, account_id, ticker):
     position_data_json = redis_server.get(f"position:{account_id}:{ticker}")
     if position_data_json:
         position_dict = json.loads(position_data_json)
-        return Position(**position_dict)
+        # Ensure all required fields are present
+        required_fields = ["accountId", "ticker", "quantity", "positionType", "avgPrice", "lastUpdated"]
+        for field in required_fields:
+            if field not in position_dict:
+                raise ValueError(f"Missing field {field} in position data")
+        return position_dict
     return None
 
 # Retrieve Price Data
@@ -129,8 +146,10 @@ def retrieve_price_data(redis_server, ticker):
 
 # Read Tickers from File
 def read_tickers_from_file():
+    tickers_path = '/app/python/tickers.txt'
+    tickers_path_development = 'python/tickers.txt'
     try:
-        with open('/app/python/tickers.txt', 'r') as file:
+        with open(tickers_path_development, 'r') as file:
             tickers = file.read().splitlines()
         return tickers
     except Exception as e:
@@ -147,53 +166,85 @@ def get_redis_connection():
         return None
 
 # Fetch All Positions and Prices
+import pandas as pd
+
 def fetch_all_positions_and_prices(redis_server, account_id, tickers):
     positions = []
     for ticker in tickers:
-        position = retrieve_position_data(redis_server, account_id, ticker)
-        price = retrieve_price_data(redis_server, ticker)
-        if position:
-            position_data = position.dict()
-            position_data['current_price'] = price if price else "N/A"
-            positions.append(position_data)
+        position_dict = retrieve_position_data(redis_server, account_id, ticker)
+        if position_dict:
+            try:
+                # Convert lastUpdated to datetime
+                position_dict['lastUpdated'] = pd.to_datetime(position_dict['lastUpdated'])
+                
+                # Create Position instance
+                position = Position(**position_dict)
+                
+                # Retrieve current price data
+                price = retrieve_price_data(redis_server, ticker)
+                
+                # Prepare position data for DataFrame
+                position_data = position.dict()
+                position_data['current_price'] = price if price else "N/A"
+                positions.append(position_data)
+            except ValueError as e:
+                logger.error(f"Error creating Position: {e}")
+        else:
+            logger.error(f"No position data found for ticker: {ticker}")
+    
     return pd.DataFrame(positions)
+
+# Display Table of Trade Data
+@st.experimental_fragment(run_every=timedelta(seconds=refresh_rate))
+def trade_view():
+    st.header("Trade View")
+    redis_server = get_redis_connection()
+    trade_data = []
+    tickers = read_tickers_from_file()
+    for i, ticker in enumerate(tickers):
+        trade_data.append({"Trade ID": i+1, "Symbol": ticker, "Quantity": 1, "Price": retrieve_price_data(redis_server, ticker)})
+    trade_df = pd.DataFrame(trade_data)
+    st.dataframe(trade_df)
+
+# Display Table of Position Data
+@st.experimental_fragment(run_every=timedelta(seconds=refresh_rate))
+def position_view():
+    st.header("Position View")
+    account_ids = fetch_account_ids()
+    if account_ids:
+        account_id = st.selectbox("Select Account ID", account_ids, key="position_view_account_id")
+        redis_server = get_redis_connection()
+        if redis_server:
+            tickers = read_tickers_from_file()
+            if tickers:
+                position_df = fetch_all_positions_and_prices(redis_server, account_id, tickers)
+                st.dataframe(position_df)
+            else:
+                st.error("No tickers available.")
+        else:
+            st.error("Unable to connect to Redis.")
+    else:
+        st.error("No account IDs available.")
+
 
 
 # Trading Dashboard
 def trading_dashboard():
     st.title("Trading Dashboard")
-
+    
+    st.sidebar.title("Trading Dashboard Settings")
+    refresh_rate = st.sidebar.slider("Refresh Rate (seconds)", 5, 60, 10)
+    
     tabs = st.tabs(["Trade View", "Position View", "Bulk Booking", "Single Trade", "Account Manager", "PNL", "Risk"])
 
     with tabs[0]:
-        st.header("Trade View")
-        trade_data = [
-            {"Trade ID": 1, "Symbol": "AAPL", "Quantity": 10, "Price": 150},
-            {"Trade ID": 2, "Symbol": "GOOGL", "Quantity": 15, "Price": 1200},
-            {"Trade ID": 3, "Symbol": "MSFT", "Quantity": 20, "Price": 210}
-        ]
-        trade_df = pd.DataFrame(trade_data)
-        st.dataframe(trade_df)
+        trade_view()
 
     with tabs[1]:
-        st.header("Position View")
-        account_ids = fetch_account_ids()
-        if account_ids:
-            account_id = st.selectbox("Select Account ID", account_ids, key="position_view_account_id")
-            redis_server = get_redis_connection()
-            if redis_server:
-                tickers = read_tickers_from_file()
-                if tickers:
-                    position_df = fetch_all_positions_and_prices(redis_server, account_id, tickers)
-                    st.dataframe(position_df)
-                else:
-                    st.error("No tickers available.")
-            else:
-                st.error("Unable to connect to Redis.")
-        else:
-            st.error("User has no accounts")
+        position_view()
 
     with tabs[2]:
+
         st.header("Bulk Booking")
         account_ids = fetch_account_ids()
         if account_ids:
@@ -203,10 +254,9 @@ def trading_dashboard():
             account_name = st.selectbox("Account", account_names, key="multi_trade_account_id")
             
             tickers_path = '/app/python/tickers.txt'
-            
-            tickers_path_development = 'python/tickers.txt'
+            tickers_path_dev = 'python/tickers.txt'
             try:
-                with open(tickers_path, 'r') as file:
+                with open(tickers_path_dev, 'r') as file:
                     tickers = file.read().splitlines()
             except Exception as e:
                 st.error(f"Error reading tickers from file: {e}")
@@ -232,25 +282,45 @@ def trading_dashboard():
                 update_trade(i, "quantity", quantity)
                 update_trade(i, "direction", direction)
 
+            bulk_input = st.text_area("Or enter all trades in the following format: IMB, 1000, B. MSFT, 2000, S. AMZN, 300, S.")
+            
+            def parse_bulk_input(bulk_input):
+                # Regular expression to parse input
+                trade_pattern = re.compile(r'(\w+),\s*(\d+),\s*([BS])')
+                trades = trade_pattern.findall(bulk_input)
+                return [{"ticker": t[0], "quantity": int(t[1]), "direction": "BUY" if t[2] == "B" else "SELL"} for t in trades]
+
             if st.button("Submit All Trades"):
-                if account_name and st.session_state.multi_trade_data:
+                if account_name:
                     selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
                     account_id = selected_account["account_id"]
                     headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-
+                    
                     all_trades_successful = True
-                    for trade in st.session_state.multi_trade_data:
-                        response = requests.post(f"{backend_url}/publish/trade", json={
-                            "account_id": account_id,
-                            "ticker": trade["ticker"],
-                            "quantity": trade["quantity"],
-                            "direction": trade["direction"]
-                        }, headers=headers)
+                    trades_to_submit = st.session_state.multi_trade_data
+                    
+                    if bulk_input:
+                        trades_to_submit += parse_bulk_input(bulk_input)
 
-                        if response.status_code != 200:
-                            all_trades_successful = False
-                            st.error(f"Error submitting trade: {response.text}")
-                            break
+                    # Validate trades
+                    invalid_tickers = [trade["ticker"] for trade in trades_to_submit if trade["ticker"] not in tickers]
+                    if invalid_tickers:
+                        st.error(f"Invalid tickers found: {', '.join(invalid_tickers)}")
+                        all_trades_successful = False
+
+                    if all_trades_successful:
+                        for trade in trades_to_submit:
+                            response = requests.post(f"{backend_url}/publish/trade", json={
+                                "account_id": account_id,
+                                "ticker": trade["ticker"],
+                                "quantity": trade["quantity"],
+                                "direction": trade["direction"]
+                            }, headers=headers)
+
+                            if response.status_code != 200:
+                                all_trades_successful = False
+                                st.error(f"Error submitting trade for {trade['ticker']}: {response.text}")
+                                break
 
                     if all_trades_successful:
                         st.success("All trades submitted successfully!")
@@ -278,7 +348,7 @@ def trading_dashboard():
             # tickers_path_development = '/app/python/tickers.txt'
 
             try:
-                with open(tickers_path, 'r') as file:
+                with open(tickers_path_dev, 'r') as file:
                     tickers = file.read().splitlines()
             except Exception as e:
                 st.error(f"Error reading tickers from file: {e}")
@@ -286,8 +356,8 @@ def trading_dashboard():
             ticker = st.selectbox("Ticker", tickers, key="single_trade_ticker")
             quantity = st.number_input("Quantity", min_value=1, step=1, key="single_trade_quantity")
             direction = st.selectbox("Direction", ["BUY", "SELL"], key="single_trade_direction")
-
-            if st.button("Book", key="single_trade_submit"):
+            current_price = retrieve_price_data(get_redis_connection(), ticker)
+            if st.button(f"Book: ${current_price * quantity:.2f}", key="single_trade_submit"):
                 if account_name and ticker and quantity:
                     selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
                     account_id = selected_account["account_id"]
@@ -302,7 +372,7 @@ def trading_dashboard():
                     if response.status_code == 200:
                         response_data = response.json()
                         total_price = response_data.get('total_price', 'Unknown')
-                        st.success(f"Trade submitted successfully! Total price: ${total_price % 1000}")                   
+                        st.success(f"Trade submitted successfully! Total price: ${total_price:.2f}")                   
                     elif response.status_code == 401:
                         st.error("User cannot create trades for this account")
                     else:
