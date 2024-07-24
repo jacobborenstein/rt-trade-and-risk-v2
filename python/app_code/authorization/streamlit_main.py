@@ -12,6 +12,7 @@ import time
 from datetime import timedelta
 from pydantic import BaseModel
 import logging
+from app_code.models.models import Position
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,13 +22,15 @@ st.set_page_config(page_title="Trading Dashboard", page_icon=":chart_with_upward
 
 refresh_rate = 10
 
-backend_url = "http://main:8000"
+backend_url = "http://localhost:8000"
 
-class Position(BaseModel):
-    account: dict
-    ticker: str
-    quantity: int
-    average_price: float
+#class Position(BaseModel):
+ #   accountId: str = Field(..., alias="accountId")
+  #  ticker: str
+   # quantity: int
+    #position_type: PositionType = Field(..., alias="positionType")
+    #avg_price: float = Field(..., alias="avgPrice")
+    #last_updated: datetime = Field(..., alias="lastUpdated")
 
 
 
@@ -149,7 +152,7 @@ def read_tickers_from_file():
     tickers_path = '/app/python/tickers.txt'
     tickers_path_development = 'python/tickers.txt'
     try:
-        with open(tickers_path, 'r') as file:
+        with open(tickers_path_development, 'r') as file:
             tickers = file.read().splitlines()
         return tickers
     except Exception as e:
@@ -159,7 +162,7 @@ def read_tickers_from_file():
 # Get Redis Connection
 def get_redis_connection():
     try:
-        r = redis.Redis(host='redis', port=6379)
+        r = redis.Redis(host='localhost', port=6379)
         return r
     except Exception as e:
         st.error(f"Error connecting to Redis: {e}")
@@ -176,15 +179,13 @@ def fetch_all_positions_and_prices(redis_server, account_id, tickers):
             try:
                 # Convert lastUpdated to datetime
                 position_dict['lastUpdated'] = pd.to_datetime(position_dict['lastUpdated'])
-                
-                # Create Position instance
+                # Create Position instance aka the problem child
                 position = Position(**position_dict)
-                
                 # Retrieve current price data
                 price = retrieve_price_data(redis_server, ticker)
                 
                 # Prepare position data for DataFrame
-                position_data = position.dict()
+                position_data = position.model_dump()
                 position_data['current_price'] = price if price else "N/A"
                 positions.append(position_data)
             except ValueError as e:
@@ -216,9 +217,10 @@ def position_view():
         redis_server = get_redis_connection()
         if redis_server:
             tickers = read_tickers_from_file()
+            logger.info(tickers)
             if tickers:
                 position_df = fetch_all_positions_and_prices(redis_server, account_id, tickers)
-                st.dataframe(position_df)
+                st.dataframe(position_df.drop(columns=['last_updated']))
             else:
                 st.error("No tickers available.")
         else:
@@ -256,7 +258,7 @@ def trading_dashboard():
             tickers_path = '/app/python/tickers.txt'
             tickers_path_dev = 'python/tickers.txt'
             try:
-                with open(tickers_path, 'r') as file:
+                with open(tickers_path_dev, 'r') as file:
                     tickers = file.read().splitlines()
             except Exception as e:
                 st.error(f"Error reading tickers from file: {e}")
@@ -348,7 +350,7 @@ def trading_dashboard():
             # tickers_path_development = '/app/python/tickers.txt'
 
             try:
-                with open(tickers_path, 'r') as file:
+                with open(tickers_path_dev, 'r') as file:
                     tickers = file.read().splitlines()
             except Exception as e:
                 st.error(f"Error reading tickers from file: {e}")

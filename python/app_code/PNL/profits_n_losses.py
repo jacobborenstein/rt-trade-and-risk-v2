@@ -14,17 +14,14 @@ import logging
 import requests
 
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from app_code.redis_cache.cache_database import retrieve_position_data, PositionKey, retrieve_price_data
-from app_code.mongo.crud import get_trades_by_account_by_ticker
-from app_code.models.models import Direction
-from app_code.models.models import Trade
+sys.path.append(os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "..", "..")))
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-r = redis.Redis(host='redis', port=6379)
+r = redis.Redis(host='localhost', port=6379)
 pubsub = r.pubsub()
 pubsub.subscribe('position-keys')
 r.ping()
@@ -50,8 +47,12 @@ def calculate_pnl(position):
     # Calculate the unrealized PnL synchronously
     unrealized_pnl = calculate_unrealized_pnl_all_time(position, current_price)
 
-    unrealized_pnl_today = calculate_unrealized_pnl_today(position, current_price)
-    
+    loop = asyncio.get_event_loop()
+
+    unrealized_pnl_today = loop.run_until_complete(calculate_unrealized_pnl_today(position, current_price))
+
+    loop = asyncio.get_event_loop()
+
     # Log the PnL values
     # logger.info(f"Current Price: {current_price}, Realized PnL: {realized_pnl}, Unrealized PnL: {unrealized_pnl}")
 
@@ -107,20 +108,30 @@ async def calculate_realized_pnl_today(position):
                 earned += trade.quantity * trade.executed_price
     return earned - spent
 
-def calculate_unrealized_pnl_today(position, current_price):
-        price_day_start = 0
-        return 10
 
-while True:
-    try:
-                for message in pubsub.listen():
-                    logger.info("gottem")
-                    if message['type'] == 'message':
-                        position_key_data = message['data']
-                        position_key_dict = json.loads(position_key_data)
-                        position_key = PositionKey(**position_key_dict)
-                        position = retrieve_position_data(r, position_key.account_id, position_key.ticker)
-                        calculate_pnl(position)
-    except Exception as e:
-                print(f"Error: {e}")
-                time.sleep(5)
+async def calculate_unrealized_pnl_today(position, current_price):
+    response = requests.get(f"http://localhost:8000/prices/{position.ticker}")
+    if response.status_code == 200:
+        prices = response.json()
+    logger.info(prices[0])
+    return (current_price - prices[0]['price']) * position.quantity
+
+
+def main():
+    while True:
+        try:
+            for message in pubsub.listen():
+                logger.info("gottem")
+                if message['type'] == 'message':
+                    position_key_data = message['data']
+                    position_key_dict = json.loads(position_key_data)
+                    position_key = PositionKey(**position_key_dict)
+                    position = retrieve_position_data(
+                        r, position_key.account_id, position_key.ticker)
+                    calculate_pnl(position)
+        except Exception as e:
+            print(f"Error: {e}")
+            time.sleep(5)
+
+if __name__ == "__main__":
+    main()

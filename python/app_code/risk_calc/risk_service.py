@@ -13,7 +13,7 @@ from risk_calculator import RiskCalculator
 from redis_cache.cache_database import retrieve_position_data
 
 class RiskService:
-    def __init__(self, data_source, redis_host='redis', redis_port=6379):
+    def __init__(self, data_source, redis_host='localhost', redis_port=6379):
         self.r = redis.Redis(host=redis_host, port=6379)
         self.pubsub = self.r.pubsub()
         self.pubsub.subscribe('position-keys')
