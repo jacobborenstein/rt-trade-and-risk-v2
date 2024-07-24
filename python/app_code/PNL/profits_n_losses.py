@@ -1,17 +1,22 @@
+from app_code.models.models import Trade
+from app_code.models.models import Direction
+from app_code.mongo.crud import get_prices_from_datetime
+from app_code.mongo.crud import get_trades_by_account_by_ticker
+from app_code.redis_cache.cache_database import retrieve_position_data, PositionKey, retrieve_price_data
 import sys
 import os
 import asyncio
 import json
 import time
-from datetime import datetime
-from altair import to_json
+from datetime import datetime, timedelta
 import redis
 import logging
+import requests
+
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from app_code.redis_cache.cache_database import retrieve_position_data, PositionKey, retrieve_price_data
 from app_code.mongo.crud import get_trades_by_account_by_ticker
-from app_code.mongo.crud import get_first_price_of_day
 from app_code.models.models import Direction
 from app_code.models.models import Trade
 
@@ -19,33 +24,36 @@ from app_code.models.models import Trade
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-r = redis.Redis(host='localhost', port=6379)
+r = redis.Redis(host='redis', port=6379)
 pubsub = r.pubsub()
 pubsub.subscribe('position-keys')
 r.ping()
 logger.info("connected to redis succesfulyly")
 
+
 def calculate_pnl(position):
     current_price = get_current_price(position.ticker)
-    
+
     # Get the event loop
     loop = asyncio.get_event_loop()
-    
+
     # Run the asynchronous function to calculate realized PnL
-    realized_pnl = loop.run_until_complete(calculate_realized_pnl_all_time(position))
+    realized_pnl = loop.run_until_complete(
+        calculate_realized_pnl_all_time(position))
 
     loop = asyncio.get_event_loop()
-    
+
     # Run the asynchronous function to calculate realized PnL
-    realized_pnl_today = loop.run_until_complete(calculate_realized_pnl_today(position))
-    
+    realized_pnl_today = loop.run_until_complete(
+        calculate_realized_pnl_today(position))
+
     # Calculate the unrealized PnL synchronously
     unrealized_pnl = calculate_unrealized_pnl_all_time(position, current_price)
 
-    unrealized_pnl_today = loop.run_until_complete(calculate_unrealized_pnl_today(position, current_price))
+    unrealized_pnl_today = calculate_unrealized_pnl_today(position, current_price)
     
     # Log the PnL values
-    #logger.info(f"Current Price: {current_price}, Realized PnL: {realized_pnl}, Unrealized PnL: {unrealized_pnl}")
+    # logger.info(f"Current Price: {current_price}, Realized PnL: {realized_pnl}, Unrealized PnL: {unrealized_pnl}")
 
     # Prepare PnL measures
     pnl_measures = {
@@ -66,50 +74,42 @@ def calculate_pnl(position):
 
 
 def get_current_price(ticker):
-        return retrieve_price_data(r, ticker)
+    return retrieve_price_data(r, ticker)
+
 
 async def calculate_realized_pnl_all_time(position):
-        spent = 0
-        earned = 0
-        trades = await get_trades_by_account_by_ticker(position.account_id, position.ticker)
-        for trade in trades:
+    spent = 0
+    earned = 0
+    trades = await get_trades_by_account_by_ticker(position.account_id, position.ticker)
+    for trade in trades:
+        if trade.direction == Direction.BUY:
+            spent += trade.quantity * trade.executed_price
+        else:
+            earned += trade.quantity * trade.executed_price
+    return earned - spent
+
+
+def calculate_unrealized_pnl_all_time(position, current_price):
+    unrealized_pnl = (current_price - position.avg_price) * position.quantity
+    return unrealized_pnl
+
+
+async def calculate_realized_pnl_today(position):
+    today = datetime.now().date()
+    spent = 0
+    earned = 0
+    trades = await get_trades_by_account_by_ticker(position.account_id, position.ticker)
+    for trade in trades:
+        if trade.executed_time.date() == today:
             if trade.direction == Direction.BUY:
                 spent += trade.quantity * trade.executed_price
             else:
                 earned += trade.quantity * trade.executed_price
-        return earned - spent
+    return earned - spent
 
-def calculate_unrealized_pnl_all_time(position, current_price):
-        unrealized_pnl = (current_price - position.avg_price) * position.quantity
-        return unrealized_pnl
-
-async def calculate_realized_pnl_today(position):
-        today = datetime.now().date()
-        spent = 0
-        earned = 0
-        trades = await get_trades_by_account_by_ticker(position.account_id, position.ticker)
-        for trade in trades:
-            if trade.executed_time.date() == today:
-                if trade.direction == Direction.BUY:
-                    spent += trade.quantity * trade.executed_price
-                else:
-                    earned += trade.quantity * trade.executed_price
-        return earned - spent
-
-
-async def calculate_unrealized_pnl_today(position, current_price):
-    start_of_today = datetime.today()
-    prices_day_start = await get_first_price_of_day(position.ticker, start_of_today)
-    
-    logger.info(start_of_today)
-    logger.info(prices_day_start)
-    
-    if prices_day_start:
-        price_day_start = prices_day_start[0]['price']  # Assuming the price data is in a field called 'price'
-        return (current_price - price_day_start) * position.quantity
-    else:
-        logger.error("No prices available for the start of the day.")
-        return None
+def calculate_unrealized_pnl_today(position, current_price):
+        price_day_start = 0
+        return 10
 
 while True:
     try:

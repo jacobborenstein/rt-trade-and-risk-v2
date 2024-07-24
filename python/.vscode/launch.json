@@ -14,6 +14,99 @@
                 ],
                 "projectType": "general"
             }
-        }
+        },
+        {
+            "name": "Run Mongo",
+            "type": "python",
+            "request": "launch",
+            "module": "app_code.mongo.mongo",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8000"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Position Aggregator",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/position_agg/position_agg.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/position_agg",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run PL",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/PNL/profits_n_losses.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/PNL",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Cache Database",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/redis_cache/cache_database.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/redis_cache",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }   
+        },
+        {
+            "name": "Run Price Feed Publisher",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/price_feed/price_publisher.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/price_feed",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Streamlit Page",
+            "type": "python",
+            "request": "launch",
+            "module": "streamlit",
+            "args": ["run", "${workspaceFolder}/python/app_code/authorization/streamlit_main.py"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        }             
+    ],
+    "compounds": [
+        {
+            "name": "Run All Services",
+            "configurations": [
+                "Run Main",
+                "Run Position Aggregator",
+                "Run Price Feed Publisher",
+                "Run Mongo",
+                "Run Cache Database",
+                "Run Streamlit Page",
+                "Run PL"
+            ]
+        },
     ]
 }

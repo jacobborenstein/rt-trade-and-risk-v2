@@ -17,7 +17,7 @@ class AccountType(str, Enum):
 class Account(BaseModel):
     account_id: Optional[str] = Field(..., alias="accountId")
     account_name: str = Field(..., alias="accountName")
-    account_type: AccountType = Field(..., alias="accountType")
+    # account_type: AccountType = Field(..., alias="accountType")
 
 
 
@@ -29,6 +29,8 @@ class TradeRequest(BaseModel):
     account_id: str
     ticker: str
     quantity: int
+    direction: Direction
+
 
 class Trade(BaseModel):
     primaryKey: PrimaryKey
@@ -42,7 +44,7 @@ class Trade(BaseModel):
     def to_json(self):
     # Convert the object to a dictionary for json
         return {
-            "primaryKey": self.primaryKey.dict(by_alias=True),
+            "primaryKey": self.primaryKey.model_dump(by_alias=True),
             "ticker": self.ticker,
             "direction": self.direction,
             "quantity": self.quantity,

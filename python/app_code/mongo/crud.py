@@ -1,15 +1,14 @@
-from app_code.models.models import Account, Trade, Position, PrimaryKey, Direction, TickerPrice, UserInDB
+from app_code.models.models import TickerPrice, Account, Trade, Position, PrimaryKey, Direction, TickerPrice, UserInDB
 from app_code.mongo.database import account_collection, trade_collection, position_collection, price_collection, user_collection
 from datetime import datetime, timedelta
 from typing import Optional, List
 import redis
 import logging
-import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-r = redis.Redis(host='localhost', port=6379)
+r = redis.Redis(host='redis', port=6379)
 r.ping()
 
 # Helper function to convert a Pydantic model to a dict suitable for MongoDB
@@ -17,6 +16,7 @@ def account_helper(account: Account) -> dict:
     return {
         "account_id": account.account_id,
         "account_name": account.account_name,
+        # "account_type": account.account_type
     }
 
 # Add Account
@@ -123,8 +123,22 @@ async def add_ticker_price(ticker_price: TickerPrice) -> dict:
 
 async def get_price_for_ticker(ticker: str) -> dict:
     price = await price_collection.find_one({"ticker": ticker},
-                                            sort=[("last_updated", -1)])
+                                            sort=[("time", -1)])
     return price
+
+async def get_prices_from_datetime(ticker: str, start_time: datetime, end_time: datetime) -> list[dict]:
+    start_time_str = start_time.isoformat()
+    end_time_str = end_time.isoformat()
+
+    prices = await price_collection.find({
+        "ticker": ticker,
+        "time": {
+            "$gte": start_time_str,
+            "$lt": end_time_str
+        }
+    }).sort("time", 1).to_list(length=None)
+    return [TickerPrice(**price) for price in prices]
+
 
 # Add User
 async def create_user(user: UserInDB) -> dict:
@@ -155,23 +169,25 @@ async def update_user_permissions(username: str, can_read: List[str], can_write:
 
 async def get_user_accounts(username: str) -> dict:
     user = await user_collection.find_one({"username": username})
-    accounts = {
+    account_ids = {
         "can_read": user["can_read"],
         "can_write": user["can_write"]
     }
-    return accounts
+    return account_ids
 
-async def get_first_price_of_day(ticker: str, date: datetime) -> Optional[dict]:
-    start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
-    end_of_day = start_of_day + timedelta(days=1)
-    
-    prices = await price_collection.find({
-        "ticker": ticker,
-        "time": {"$gte": start_of_day, "$lt": end_of_day}
-    }).sort("time", 1).to_list(length=1)
-    
-    if prices:
-        return prices[0]
-    else:
-        logger.info(f"No prices found for ticker {ticker} on {date.strftime('%Y-%m-%d')}")
-        return None
+async def get_user_write_accounts(username: str) -> list:
+    user = await user_collection.find_one({"username": username})
+    accounts = []
+    account_ids = {
+        "can_read": user["can_read"],
+        "can_write": user["can_write"]
+    }
+    for account_id in account_ids["can_write"]:
+        account_db = await account_collection.find_one({"account_id": account_id})
+        account = Account(
+            accountId=account_db["account_id"],
+            accountName=account_db["account_name"],
+            # accountType=account_db["account_type"]
+        )
+        accounts.append(account)
+    return accounts
