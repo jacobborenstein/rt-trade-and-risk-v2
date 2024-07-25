@@ -220,7 +220,13 @@ def position_view():
             logger.info(tickers)
             if tickers:
                 position_df = fetch_all_positions_and_prices(redis_server, account_id, tickers)
-                st.dataframe(position_df.drop(columns=['last_updated']))
+                if position_df.empty:
+                    st.write("There are no positions for this account. Please check back after making some trades.")
+                else:
+                    order = ['last_updated', 'account_id', 'ticker', 'quantity', 'position_type', 'avg_price']
+                    position_df['last_updated'] = pd.to_datetime(position_df['last_updated'])
+                    position_df['last_updated'] = position_df['last_updated'].dt.time
+                    st.dataframe(position_df[order])
             else:
                 st.error("No tickers available.")
         else:
