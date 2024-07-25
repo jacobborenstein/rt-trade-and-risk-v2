@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pydantic import Field
 from models.models import Position, PositionType
 from datetime import datetime
-from cache_database import retrieve_position_data
+from app_code.redis_cache.cache_database import retrieve_position_data
 import redis
 import json
 import time
@@ -25,7 +25,6 @@ except Exception as e:
 
 
 def retrieve_position_full_data(r, key):
-    
     position_full_data_json = r.get(key)
     position_full_data_dic = json.loads(position_full_data_json)
 
@@ -75,24 +74,24 @@ async def combine_and_process_data(account_id, ticker):
         'ticker': ticker,
 
         'quantity': position_raw.quantity,
-        'position_type': position_raw.position_type,
-        'avg_price': position_raw.avg_price,
+        'position type': position_raw.position_type,
+        'avg price': position_raw.avg_price,
 
 
-        'realized_pnl': pnl_data['realized_pnl'],
-        'unrealized_pnl': pnl_data['unrealized_pnl'],
-        'unrealized_pnl_today': pnl_data['unrealized_pnl_today'],
-        'realized_pnl_today': pnl_data['realized_pnl_today'],
-        'total_pnl': pnl_data['total_pnl'],
-        'total_pnl_today': pnl_data['total_pnl_today'],
+        'realized pnl': pnl_data['realized_pnl'],
+        'unrealized pnl': pnl_data['unrealized_pnl'],
+        'unrealized pnl today': pnl_data['unrealized_pnl_today'],
+        'realized pnl today': pnl_data['realized_pnl_today'],
+        'total pnl': pnl_data['total_pnl'],
+        'total pnl today': pnl_data['total_pnl_today'],
         
-        'standard_deviation': risk_data['standard_deviation'],
-        'sharpe_ratio': risk_data['sharpe_ratio'],
+        'standard deviation': risk_data['standard_deviation'],
+        'sharpe ratio': risk_data['sharpe_ratio'],
         'alpha': risk_data['alpha'],
         'beta': risk_data['beta'],
-        'r_squared': risk_data['r_squared'],
+        'r squared': risk_data['r_squared'],
         
-        'last_updated': datetime.now().isoformat()
+        'last updated': datetime.now().isoformat()
         
     }
     

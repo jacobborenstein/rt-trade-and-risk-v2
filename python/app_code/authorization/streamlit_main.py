@@ -2,6 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
+from altair import Orient
 import streamlit as st
 import requests
 import pandas as pd
@@ -13,6 +14,7 @@ from datetime import timedelta
 from pydantic import BaseModel
 import logging
 from app_code.models.models import Position
+from app_code.redis_cache.position_joiner import retrieve_position_full_data
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -215,6 +217,8 @@ def position_view():
     if account_ids:
         account_id = st.selectbox("Select Account ID", account_ids, key="position_view_account_id")
         redis_server = get_redis_connection()
+        ps = redis_server.pubsub()
+        ps.subscribe('position_full_key')
         if redis_server:
             tickers = read_tickers_from_file()
             logger.info(tickers)
@@ -228,6 +232,20 @@ def position_view():
                     sorted_df.drop(columns=['last_updated'])
                     sorted_df.columns = ['Account ID', 'Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'last_updated' ,'']
                     st.dataframe(sorted_df.drop(columns=['Account ID', 'last_updated','']))
+                    expanded = st.selectbox("Select a ticker to see more info", sorted_df['Ticker'])
+                    if expanded:
+                        key = f"combined:{account_id}:{expanded}"
+                        json_data = redis_server.get(key)
+                        if json_data is not None:
+                            data = json.loads(json_data)
+                            dict(data).pop('account')
+                            dict(data).pop('ticker')
+                            #dict(data).pop('last updated')
+                            df = pd.DataFrame.from_dict(data, orient='index')
+                            st.dataframe(df)
+                        #full_data = retrieve_position_full_data(redis_server, expanded)
+                        #st.write(full_data)
+
             else:
                 st.error("No tickers available.")
         else:
@@ -413,6 +431,10 @@ def trading_dashboard():
         if st.button("Logout"):
             st.session_state["token"] = None
             st.experimental_rerun()
+    with tabs[5]:
+        st.header("Profits & Losses")
+        st.write("profits & losses")
+
 
 # Main Function
 def main():

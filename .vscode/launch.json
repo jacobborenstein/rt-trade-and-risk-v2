@@ -72,10 +72,32 @@
             }   
         },
         {
+            "name": "Run position joiner",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/redis_cache/position_joiner.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/redis_cache",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
             "name": "Run Price Feed Publisher",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/python/app_code/price_feed/price_publisher.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/price_feed",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Risk",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/risk_calc/risk_service.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/python/app_code/price_feed",
             "env": {
@@ -104,8 +126,10 @@
                 "Run Price Feed Publisher",
                 "Run Mongo",
                 "Run Cache Database",
+                "Run position joiner",
                 "Run Streamlit Page",
-                "Run PL"
+                "Run PL",
+                "Run Risk"
             ]
         },
     ]
