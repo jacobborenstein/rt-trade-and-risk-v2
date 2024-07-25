@@ -52,7 +52,7 @@ async def publish_trade(trade_request: TradeRequest, current_user: User = Depend
     if (current_user.can_write is not None and account_id not in current_user.can_write) or current_user.can_write is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User can not create trades for this account"
+            detail="User cannot create trades for this account"
         )
 
     logger.info("main-1) Publishing trade...")
@@ -65,10 +65,12 @@ async def publish_trade(trade_request: TradeRequest, current_user: User = Depend
     logger.info(f"main-3) published trade: {trade_data}")
     
     total_price = trade_data['quantity'] * trade_data['executedPrice']
-    
+    primary_key = trade_data["primaryKey"]
+
     return {
         "status": "Trade Sent",
-        "total_price": total_price
+        "total_price": total_price,
+        "primaryKey": primary_key  
     }
 
 @app.post("/token", response_model=Token)

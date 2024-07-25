@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 import redis
 import json
 import time
+from datetime import datetime
 
 
 
@@ -37,32 +38,19 @@ def retrieve_price_data(redis_server, ticker: str):
     return price
 
 def cache_trade_data(redis_server, trade: Trade):
-    #cache the trade data in redis 
-
-    #convert back into Json to stor in redis
     trade_data_json = json.dumps(trade.to_json())
-    
-    #unique key for each trade, the Primary Key of the trade
-    primary_key_Trade_ID = trade.primaryKey.trade_id
-    
-
-    #Store it in redis under 'trade' with the key.(to retrieve the data use .get('trade:<account_id>:<trade_id>'). exp: .get('trade:12345:123) 
-    redis_server.set (f"trade:{primary_key_Trade_ID}", trade_data_json)
+    primary_key_trade_id = trade.primaryKey.trade_id
+    account_id = trade.primaryKey.account_id
+    redis_server.set(f"trade:{primary_key_trade_id}", trade_data_json)
+    redis_server.rpush(f"account:{account_id}:trades", primary_key_trade_id)
 
 def retrieve_trade_data(redis_server, primary_key):
-
-    #method to retrieve the cached trade data from redis
     trade_data_json = redis_server.get(f"trade:{primary_key}")
-    
-    #if data is found, parse it back into a dictionary
-  
-    print(trade_data_json)
-   
-    trade_dict = json.loads(trade_data_json)
+    if trade_data_json:
+        trade_dict = json.loads(trade_data_json)
+        return Trade(**trade_dict)
+    return None
 
-    #return the trade object
-
-    return Trade(**trade_dict)
 
 #method to cache the position data in redis DB
 def cache_position_data(redis_server, position: Position):
@@ -103,7 +91,7 @@ def main():
         print("Connecting to Redis...")
         r = redis.Redis(host='redis', port=6379)
         pubsub = r.pubsub()
-        pubsub.subscribe('positions','trades','prices_and_values')
+        pubsub.subscribe('positions','trades-from-mongo','prices_and_values')
         print("Subscribed to channels")
     except Exception as e:
         print(f"Error connecting to Redis: {e}")
@@ -143,25 +131,17 @@ def main():
 
 
                     #if the channel is 'trades', do the necessary actions
-                    elif channel == 'trades':
+                    elif channel == 'trades-from-mongo':
                             
-                        #get the trade data from the message as a Json string
                         trade_data = message['data']
-                        print(f"Received trade data: {trade_data}")
+                        trade_list = json.loads(trade_data)
                         
-                        #parse the Json string into a python dictionary          
-                        trade_dict = json.loads(trade_data)
-                        print(f"Parsed trade dictionary: {trade_dict}")
+                        for trade_dict in trade_list:
+                            trade_dict['executedTime'] = datetime.fromisoformat(trade_dict['executedTime'])
+                            trade = Trade(**trade_dict)
+                            cache_trade_data(r, trade)
+                            r.publish('trade-keys', json.dumps(trade.primaryKey.trade_id))
 
-                        # Create the Trade object directly using the parsed dictionary                 
-                        trade =  Trade(**trade_dict)
-                        print(f"Created trade: {trade}")
-
-                        #add to redis data base 
-                        cache_trade_data(r, trade)
-                    
-                        #have to publish 'price-keys' the key to the channel
-                        r.publish('trade-keys', json.dumps(trade.primaryKey.trade_id))
 
 
                     #if the channel is 'prices_and_values', do the necessary actions
