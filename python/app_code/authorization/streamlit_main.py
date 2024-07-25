@@ -223,10 +223,11 @@ def position_view():
                 if position_df.empty:
                     st.write("There are no positions for this account. Please check back after making some trades.")
                 else:
-                    order = ['last_updated', 'account_id', 'ticker', 'quantity', 'position_type', 'avg_price']
-                    position_df['last_updated'] = pd.to_datetime(position_df['last_updated'])
-                    position_df['last_updated'] = position_df['last_updated'].dt.time
-                    st.dataframe(position_df[order])
+                    #order = ['last_updated', 'account_id', 'ticker', 'quantity', 'position_type', 'avg_price']
+                    sorted_df = position_df.sort_values(by='last_updated', ascending=False)
+                    sorted_df.drop(columns=['last_updated'])
+                    sorted_df.columns = ['Account ID', 'Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'last_updated' ,'']
+                    st.dataframe(sorted_df.drop(columns=['Account ID', 'last_updated','']))
             else:
                 st.error("No tickers available.")
         else:
