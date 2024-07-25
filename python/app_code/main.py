@@ -169,3 +169,9 @@ async def get_price(ticker: str):
     
     prices = await get_prices_from_datetime(ticker, today_start, today_end)
     return prices
+
+@app.get("/users/me")
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return {
+        "username": current_user.username
+    }

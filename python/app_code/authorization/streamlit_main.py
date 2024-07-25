@@ -228,14 +228,54 @@ def trade_view():
         if redis_server:
             trade_data = fetch_trade_data_by_account(redis_server, account_id)
             if trade_data:
+                # Format data
+                for trade in trade_data:
+                    trade['executed_time'] = pd.to_datetime(trade['executed_time']).strftime('%Y-%m-%d %H:%M')
+                    trade['executed_price'] = f"${float(trade['executed_price']):,.2f}"
+                    trade['total_price'] = f"${trade['quantity'] * float(trade['executed_price'][1:].replace(',', '')):,.2f}"
+
+                # Create a DataFrame with selected columns
                 trade_df = pd.DataFrame(trade_data)
+                trade_df = trade_df.rename(columns={
+                    'executed_time': 'Time',
+                    'ticker': 'Ticker',
+                    'direction': 'Direction',
+                    'quantity': 'Quantity',
+                    'total_price': 'Total Price'
+                })
+                trade_df = trade_df[['Time', 'Ticker', 'Direction', 'Quantity', 'Total Price']]
+                
+                # Display the DataFrame
                 st.dataframe(trade_df)
+
+                # Add a selectbox to choose a trade
+                trade_options = [f"{row['Time']} - {row['Ticker']} - {row['Direction']} - {row['Quantity']} - {row['Total Price']}" for idx, row in trade_df.iterrows()]
+                selected_trade = st.selectbox("Select a trade to view details:", trade_options)
+
+                # Find the index of the selected trade
+                selected_index = trade_options.index(selected_trade)
+                selected_trade_data = trade_data[selected_index]
+                user_response = requests.get(f"{backend_url}/users/me", headers={"Authorization": f"Bearer {st.session_state['token']}"})
+                user_data = user_response.json()
+                username = user_data.get("username", "Unknown")
+                # Display selected trade details
+                with st.expander("Trade Details"):
+                    st.write(f"**Primary Key:** {selected_trade_data['primaryKey']}")
+                    st.write(f"**Executed Price:** ${float(selected_trade_data['executed_price'][1:].replace(',', '')):,.2f}")
+                    st.write(f"**Executed User:** {username}")
+                    st.write(f"**Direction:** {selected_trade_data['direction']}")
+                    st.write(f"**Quantity:** {selected_trade_data['quantity']}")
+                    st.write(f"**Total Price:** ${float(selected_trade_data['total_price'][1:].replace(',', '')):,.2f}")
             else:
                 st.write("No trade data available for this account.")
         else:
             st.error("Unable to connect to Redis.")
     else:
         st.error("No account IDs available.")
+
+
+
+
 
 
 
@@ -286,7 +326,17 @@ def single_trade():
         quantity = st.number_input("Quantity", min_value=1, step=1, key="single_trade_quantity")
         direction = st.selectbox("Direction", ["BUY", "SELL"], key="single_trade_direction")
         current_price = retrieve_price_data(get_redis_connection(), ticker)
-        if st.button(f"Book: ${current_price * quantity:.2f}", key="single_trade_submit"):
+
+        if current_price is not None:
+            button_label = f"Book: ${current_price * quantity:.2f}"
+        else:
+            button_label = "Book: Price not available"
+
+        if st.button(button_label, key="single_trade_submit"):
+            if current_price is None:
+                st.error("Current price is not available. Please try again later.")
+                return
+
             if account_name and ticker and quantity:
                 selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
                 account_id = selected_account["account_id"]
@@ -309,6 +359,7 @@ def single_trade():
                 st.experimental_rerun()
     else:
         st.error("User has no accounts")
+
 
 
 
@@ -374,7 +425,7 @@ def bulk_book():
                 if bulk_input:
                     try:
                         trades_to_submit = parse_bulk_input(bulk_input)
-                        logger.debug(f"Parsed bulk input: {trades_to_submit}")
+                        # logger.debug(f"Parsed bulk input: {trades_to_submit}")
                         invalid_tickers = [trade["ticker"] for trade in trades_to_submit if trade["ticker"] not in tickers]
                         if invalid_tickers:
                             st.error(f"Invalid tickers found: {', '.join(invalid_tickers)}")
