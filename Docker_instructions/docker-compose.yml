@@ -20,10 +20,8 @@ services:
 
   price_publisher:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
-    command: sh -c "uvicorn price_publisher:app --host 0.0.0.0 --reload --port 8080"
-    working_dir: /app/app_code/price_feed
-    ports:
-      - "8080:8080"
+    command: sh -c "python app_code/price_feed/price_publisher.py"
+    working_dir: /app
     depends_on:
       - redis
       - mongo
@@ -36,7 +34,7 @@ services:
       - redis
       - mongo
 
-  main:
+  main0:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
     command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8000"
     working_dir: /app
@@ -45,6 +43,97 @@ services:
     depends_on:
       - redis
       - mongo
+
+  main1:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8001"
+    working_dir: /app
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+      - mongo
+
+  main2:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8002"
+    working_dir: /app
+    ports:
+      - "8002:8002"
+    depends_on:
+      - redis
+      - mongo
+
+  main3:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8003"
+    working_dir: /app
+    ports:
+      - "8003:8003"
+    depends_on:
+      - redis
+      - mongo
+
+  main4:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8004"
+    working_dir: /app
+    ports:
+      - "8004:8004"
+    depends_on:
+      - redis
+      - mongo
+
+  main5:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8005"
+    working_dir: /app
+    ports:
+      - "8005:8005"
+    depends_on:
+      - redis
+      - mongo
+
+  main6:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8006"
+    working_dir: /app
+    ports:
+      - "8006:8006"
+    depends_on:
+      - redis
+      - mongo
+
+  main7:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8007"
+    working_dir: /app
+    ports:
+      - "8007:8007"
+    depends_on:
+      - redis
+      - mongo
+
+  main8:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8008"
+    working_dir: /app
+    ports:
+      - "8008:8008"
+    depends_on:
+      - redis
+      - mongo
+
+  main9:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8009"
+    working_dir: /app
+    ports:
+      - "8009:8009"
+    depends_on:
+      - redis
+      - mongo
+
 
   positions_ag:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -71,6 +160,30 @@ services:
     depends_on:
       - redis
       - main
+
+  Profits_and_Losses:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "python app_code/PNL/profits_n_losses.py"
+    working_dir: /app
+    depends_on:
+      - redis
+      - mongo
+
+  Risk:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "python app_code/risk_calc/risk_service.py"
+    working_dir: /app
+    depends_on:
+      - redis
+      - mongo
+
+  Position_Joiner:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "python app_code/redis_cache/position_joiner.py"
+    working_dir: /app
+    depends_on:
+      - redis
+      - mongo
 
 volumes:
   mongo_data:

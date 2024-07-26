@@ -8,12 +8,13 @@ import pandas as pd
 import re
 import redis
 import json
-import time 
+import time
 from datetime import timedelta
 from pydantic import BaseModel
 import logging
-from app_code.models.models import Trade, Position  
+from app_code.models.models import Trade, Position
 from app_code.redis_cache.cache_database import retrieve_trade_data
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -28,13 +29,7 @@ st.set_page_config(page_title="Trading Dashboard", page_icon=":chart_with_upward
 
 refresh_rate = 10
 
-backend_url = "http://main:8000"
-
-# class Position(BaseModel):
-#     account: dict
-#     ticker: str
-#     quantity: int
-#     average_price: float
+backend_url = "http://main:8080"
 
 # Homepage
 def homepage():
@@ -59,12 +54,14 @@ def signup():
 
     if st.button("Sign Up"):
         if username and email and full_name and password:
+            logger.info(f"Attempting to create user: {username}")
             response = requests.post(f"{backend_url}/users/new", json={
                 "username": username,
                 "email": email,
                 "full_name": full_name,
                 "password": password
             })
+            logger.info(f"Response from server: {response.status_code} - {response.text}")
             if response.status_code == 200:
                 st.success("User created successfully!")
                 st.session_state["page"] = "login"
@@ -86,10 +83,12 @@ def login():
 
     if st.button("Login"):
         if username and password:
+            logger.info(f"Attempting to login user: {username}")
             response = requests.post(f"{backend_url}/token", data={
                 "username": username,
                 "password": password
             })
+            logger.info(f"Response from server: {response.status_code} - {response.text}")
             if response.status_code == 200:
                 st.success("Login successful!")
                 st.session_state["token"] = response.json()["access_token"]
@@ -108,25 +107,42 @@ def login():
 # Fetch Account IDs
 def fetch_account_ids():
     headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-    try:
-        response = requests.get(f"{backend_url}/users/accountIds", headers=headers)
-        response.raise_for_status()
-        accounts = response.json()
-        return accounts["can_write"]
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching account IDs: {e}")
-        return []
-    
+    max_retries = 3
+    retries = 0
+    success = False
+    while retries < max_retries and not success:
+        try:
+            response = requests.get(f"{backend_url}/users/accountIds", headers=headers)
+            response.raise_for_status()
+            accounts = response.json()
+            return accounts["can_write"]
+        except requests.exceptions.RequestException as e:
+            retries += 1
+            logger.error(f"Error fetching account IDs: {e}. Retrying {retries}/{max_retries}")
+            time.sleep(1)  # Wait before retrying
+            if retries == max_retries:
+                st.error(f"Error fetching account IDs after {max_retries} attempts: {e}")
+                return []
+
 def get_accounts():
     headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-    try:
-        response = requests.get(f"{backend_url}/users/accounts", headers=headers)
-        response.raise_for_status()
-        accounts = response.json()
-        return accounts
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching accounts: {e}")
-        return []
+    max_retries = 3
+    retries = 0
+    success = False
+    while retries < max_retries and not success:
+        try:
+            response = requests.get(f"{backend_url}/users/accounts", headers=headers)
+            response.raise_for_status()
+            accounts = response.json()
+            return accounts
+        except requests.exceptions.RequestException as e:
+            retries += 1
+            logger.error(f"Error fetching accounts: {e}. Retrying {retries}/{max_retries}")
+            time.sleep(1)  # Wait before retrying
+            if retries == max_retries:
+                st.error(f"Error fetching accounts after {max_retries} attempts: {e}")
+                return []
+
 
 # Retrieve Position Data
 def retrieve_position_data(redis_server, account_id, ticker):
@@ -139,8 +155,6 @@ def retrieve_position_data(redis_server, account_id, ticker):
             if field not in position_dict:
                 raise ValueError(f"Missing field {field} in position data")
         return position_dict
-    else:
-        logger.error(f"No position data found for account: {account_id}, ticker:")
     return None
 
 # Fetch All Positions and Prices
@@ -168,12 +182,24 @@ def fetch_all_positions_and_prices(redis_server, account_id, tickers):
     
     return pd.DataFrame(positions)
 
+
 # Retrieve Price Data
 def retrieve_price_data(redis_server, ticker):
     price_data_json = redis_server.get(f"price:{ticker}")
     if price_data_json:
-        return json.loads(price_data_json)
-    return None
+        try:
+            price = json.loads(price_data_json)
+            if isinstance(price, (int, float)):
+                return price
+            else:
+                logger.error(f"Invalid price data for ticker {ticker}: {price}")
+                raise ValueError(f"Invalid price data for ticker {ticker}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding price data for ticker {ticker}: {e}")
+            raise ValueError(f"Error decoding price data for ticker {ticker}")
+    else:
+        logger.error(f"No price data found for ticker {ticker}")
+        raise ValueError(f"No price data found for ticker {ticker}")
 
 # Read Tickers from File
 def read_tickers_from_file():
@@ -195,7 +221,7 @@ def get_redis_connection():
     except Exception as e:
         st.error(f"Error connecting to Redis: {e}")
         return None
-    
+
 
 def fetch_trade_keys_by_account(redis_server, account_id):
     trade_keys = redis_server.lrange(f"account:{account_id}:trades", 0, -1)
@@ -244,7 +270,7 @@ def trade_view():
                     'total_price': 'Total Price'
                 })
                 trade_df = trade_df[['Time', 'Ticker', 'Direction', 'Quantity', 'Total Price']]
-                
+
                 # Display the DataFrame
                 st.dataframe(trade_df)
 
@@ -274,23 +300,16 @@ def trade_view():
         st.error("No account IDs available.")
 
 
-
-
-
-
-
 # Display Table of Position Data
 @st.experimental_fragment(run_every=timedelta(seconds=refresh_rate))
 def position_view():
     st.header("Position View")
     account_ids = fetch_account_ids()
     if account_ids:
-        accounts = get_accounts()
-        account_names = [account["account_name"] for account in accounts if account]
-        account_name = st.selectbox("Account", account_names, key="position_view_account_id")
-        selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
-        account_id = selected_account["account_id"]
+        account_id = st.selectbox("Select Account ID", account_ids, key="position_view_account_id")
         redis_server = get_redis_connection()
+        ps = redis_server.pubsub()
+        ps.subscribe('position_full_key')
         if redis_server:
             tickers = read_tickers_from_file()
             logger.info(tickers)
@@ -304,6 +323,20 @@ def position_view():
                     sorted_df.drop(columns=['last_updated'])
                     sorted_df.columns = ['Account ID', 'Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'last_updated' ,'']
                     st.dataframe(sorted_df.drop(columns=['Account ID', 'last_updated','']))
+                    expanded = st.selectbox("Select a ticker to see more info", sorted_df['Ticker'])
+                    if expanded:
+                        key = f"combined:{account_id}:{expanded}"
+                        json_data = redis_server.get(key)
+                        if json_data is not None:
+                            data = json.loads(json_data)
+                            dict(data).pop('account')
+                            dict(data).pop('ticker')
+                            #dict(data).pop('last updated')
+                            df = pd.DataFrame.from_dict(data, orient='index')
+                            st.dataframe(df)
+                        #full_data = retrieve_position_full_data(redis_server, expanded)
+                        #st.write(full_data)
+
             else:
                 st.error("No tickers available.")
         else:
@@ -361,23 +394,51 @@ def single_trade():
         st.error("User has no accounts")
 
 
-
-
 def parse_bulk_input(bulk_input):
     # Updated regex to allow periods in tickers
     trade_pattern = re.compile(r'([A-Z\.]+)\s*,\s*(\d+)\s*,\s*([BS])\s*')
     trades = trade_pattern.findall(bulk_input)
     if not trades:
         raise ValueError("No valid trades found in the input. Ensure the format is 'TICKER, QUANTITY, DIRECTION'.")
-    
+
     parsed_trades = []
     for t in trades:
         ticker, quantity, direction = t
         quantity = int(quantity)
         direction = "BUY" if direction == "B" else "SELL"
         parsed_trades.append({"ticker": ticker, "quantity": quantity, "direction": direction})
-    
+
     return parsed_trades
+
+def fetch_account_ids():
+    headers = {"Authorization": f"Bearer {st.session_state['token']}"}
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(f"{backend_url}/users/accountIds", headers=headers)
+            response.raise_for_status()
+            accounts = response.json()
+            return accounts["can_write"]
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching account IDs (attempt {attempt + 1}/{max_retries}): {e}")
+            time.sleep(1)  # Backoff before retrying
+    st.error("Failed to fetch account IDs after multiple attempts.")
+    return []
+
+def get_accounts():
+    headers = {"Authorization": f"Bearer {st.session_state['token']}"}
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(f"{backend_url}/users/accounts", headers=headers)
+            response.raise_for_status()
+            accounts = response.json()
+            return accounts
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching accounts (attempt {attempt + 1}/{max_retries}): {e}")
+            time.sleep(1)  # Backoff before retrying
+    st.error("Failed to fetch accounts after multiple attempts.")
+    return []
 
 def bulk_book():
     st.header("Bulk Booking")
@@ -387,7 +448,7 @@ def bulk_book():
         accounts = get_accounts()
         account_names = [account["account_name"] for account in accounts if account]
         account_name = st.selectbox("Account", account_names, key="multi_trade_account_id")
-        
+
         tickers = read_tickers_from_file()
 
         if "multi_trade_data" not in st.session_state:
@@ -406,7 +467,7 @@ def bulk_book():
             ticker = st.selectbox("Ticker", tickers, key=f"multi_trade_ticker_{i}", index=0 if trade["ticker"] == "" else tickers.index(trade["ticker"]))
             quantity = st.number_input("Quantity", min_value=1, step=1, key=f"multi_trade_quantity_{i}", value=trade["quantity"])
             direction = st.selectbox("Direction", ["BUY", "SELL"], key=f"multi_trade_direction_{i}", index=0 if trade["direction"] == "BUY" else 1)
-            
+
             update_trade(i, "ticker", ticker)
             update_trade(i, "quantity", quantity)
             update_trade(i, "direction", direction)
@@ -418,14 +479,13 @@ def bulk_book():
                 selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
                 account_id = selected_account["account_id"]
                 headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-                
+
                 all_trades_successful = True
                 trades_to_submit = st.session_state.multi_trade_data
-                
+
                 if bulk_input:
                     try:
                         trades_to_submit = parse_bulk_input(bulk_input)
-                        # logger.debug(f"Parsed bulk input: {trades_to_submit}")
                         invalid_tickers = [trade["ticker"] for trade in trades_to_submit if trade["ticker"] not in tickers]
                         if invalid_tickers:
                             st.error(f"Invalid tickers found: {', '.join(invalid_tickers)}")
@@ -434,8 +494,11 @@ def bulk_book():
                         st.error(str(e))
                         all_trades_successful = False
 
-                if all_trades_successful:
-                    for trade in trades_to_submit:
+                max_retries = 3
+                for trade in trades_to_submit:
+                    retries = 0
+                    success = False
+                    while retries < max_retries and not success:
                         response = requests.post(f"{backend_url}/publish/trade", json={
                             "account_id": account_id,
                             "ticker": trade["ticker"],
@@ -445,17 +508,24 @@ def bulk_book():
 
                         if response.status_code == 200:
                             response_data = response.json()
+                            success = True
                         else:
-                            all_trades_successful = False
-                            st.error(f"Error submitting trade for {trade['ticker']}: {response.text}")
-                            break
+                            retries += 1
+                            logger.error(f"Error submitting trade for {trade['ticker']}: {response.text}")
+                            time.sleep(1)  # Backoff before retrying
+
+                    if not success:
+                        all_trades_successful = False
+                        st.error(f"Failed to submit trade for {trade['ticker']} after {max_retries} attempts.")
+                        break
 
                 if all_trades_successful:
                     st.success("All trades submitted successfully!")
                     st.session_state.multi_trade_data = []
+                    st.experimental_set_query_params()  # Clear the text area after submission
                 else:
                     st.error("One or more trades failed to submit.")
-                
+
                 time.sleep(5)
                 st.experimental_rerun()
     else:
@@ -464,10 +534,10 @@ def bulk_book():
 # Trading Dashboard
 def trading_dashboard():
     st.title("Trading Dashboard")
-    
+
     st.sidebar.title("Trading Dashboard Settings")
     refresh_rate = st.sidebar.slider("Refresh Rate (seconds)", 5, 60, 10)
-    
+
     tabs = st.tabs(["Trade View", "Position View", "Bulk Booking", "Single Trade", "Account Manager", "PNL", "Risk"])
 
     with tabs[0]:
@@ -481,7 +551,7 @@ def trading_dashboard():
 
     with tabs[3]:
         single_trade()
-    
+
     with tabs[4]:
         st.header("Account Manager")
         st.write("account manager")
