@@ -111,7 +111,7 @@ async def calculate_realized_pnl_today(position):
 
 
 async def calculate_unrealized_pnl_today(position, current_price):
-    response = requests.get(f"http://main:8080/prices/{position.ticker}")
+    response = requests.get(f"http://18.214.165.102/prices/{position.ticker}")
     if response.status_code == 200:
         prices = response.json()
     logger.info(prices[0])
