@@ -29,7 +29,7 @@ st.set_page_config(page_title="Trading Dashboard", page_icon=":chart_with_upward
 
 refresh_rate = 10
 
-backend_url = "http://18.214.165.102"
+backend_url = "http://18.214.165.102/backend"
 
 
 # Homepage
