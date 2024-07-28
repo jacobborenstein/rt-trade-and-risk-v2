@@ -23,14 +23,28 @@ r.ping()
 
 @app.post("/publish/account/new")
 async def publish_account(account_name: str = Body(..., embed=True), current_user: User = Depends(get_current_user)):
-    account_id = "ACC_" + str(uuid.uuid4())
-    current_user.can_write = current_user.can_write if current_user.can_write is not None else []
-    current_user.can_write.append(account_id)
-    await update_user_permissions(current_user.username, current_user.can_read, current_user.can_write)
+    try:
+        logger.info(f"Creating new account with name: {account_name}")
+        account_id = "ACC_" + str(uuid.uuid4())
+        current_user.can_write = current_user.can_write if current_user.can_write is not None else []
+        current_user.can_write.append(account_id)
+        
+        await update_user_permissions(current_user.username, current_user.can_read, current_user.can_write)
+        logger.info(f"Updated user permissions for user: {current_user.username}")
 
-    account = Account(accountId=account_id, accountName=account_name, accountType=AccountType.TRADER)
-    r.publish('accounts', account.model_dump_json(by_alias=True))
-    return {"status": "Created new account: " + account.accountId}
+        account_dict = {
+            "accountId": account_id,
+            "accountName": account_name,
+        }
+        account = Account(**account_dict)
+        r.publish('accounts', account.model_dump_json(by_alias=True))
+        logger.info(f"Published new account: {account.model_dump_json(by_alias=True)}")
+
+        return {"status": "Created new account: " + account.account_id}
+    except Exception as e:
+        logger.error(f"Error creating new account: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.post("/publish/trade")
