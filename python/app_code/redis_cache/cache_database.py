@@ -26,15 +26,18 @@ def cache_price_data(redis_server, ticker: str, price: float):
     #Store it in redis under 'price' with the key.(to retrieve the data use .get('price:<ticker>'). exp: .get('price:APPL) 
     redis_server.set (f"price:{ticker}", price_data_json)
 
-def retrieve_price_data(redis_server, ticker: str):
-
+def retrieve_price_data(redis_server, ticker):
     price = None
     try:
         price_data_json = redis_server.get(f"price:{ticker}")
         if price_data_json:
             price = json.loads(price_data_json)
+            if not isinstance(price, (int, float)):
+                price = 0
+        else:
+            price = 0 
     except Exception as e:
-        print(f"Error retrieving price data: {e}")
+        price = 0 
     return price
 
 def cache_trade_data(redis_server, trade: Trade):

@@ -133,6 +133,16 @@ services:
     depends_on:
       - redis
       - mongo
+      
+  main10:
+    image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
+    command: sh -c "uvicorn app_code.main:app --reload --host 0.0.0.0 --port 8010"
+    working_dir: /app
+    ports:
+      - "8010:8010"
+    depends_on:
+      - redis
+      - mongo
 
 
   positions_ag:

@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 import streamlit as st
@@ -29,7 +29,25 @@ st.set_page_config(page_title="Trading Dashboard", page_icon=":chart_with_upward
 
 refresh_rate = 10
 
-backend_url = "http://18.214.165.102/backend"
+
+# round robin load balancing function
+def get_backend_url():
+    urls = [
+        "http://main:8000",
+        "http://main:8001",
+        "http://main:8002",
+        "http://main:8003",
+        "http://main:8004",
+        "http://main:8005",
+        "http://main:8006",
+        "http://main:8007",
+        "http://main:8008",
+        "http://main:8009",
+    ]
+    return urls[int(time.time()) % len(urls)]
+
+# backend_url = "http://18.214.165.102/backend"
+# backend_url = "http://localhost:8000"
 
 
 # Homepage
@@ -56,7 +74,7 @@ def signup():
     if st.button("Sign Up"):
         if username and email and full_name and password:
             logger.info(f"Attempting to create user: {username}")
-            response = requests.post(f"{backend_url}/users/new", json={
+            response = requests.post(f"{get_backend_url()}/users/new", json={
                 "username": username,
                 "email": email,
                 "full_name": full_name,
@@ -85,7 +103,7 @@ def login():
     if st.button("Login"):
         if username and password:
             logger.info(f"Attempting to login user: {username}")
-            response = requests.post(f"{backend_url}/token", data={
+            response = requests.post(f"{get_backend_url()}/token", data={
                 "username": username,
                 "password": password
             })
@@ -113,7 +131,7 @@ def fetch_account_ids():
     success = False
     while retries < max_retries and not success:
         try:
-            response = requests.get(f"{backend_url}/users/accountIds", headers=headers)
+            response = requests.get(f"{get_backend_url()}/users/accountIds", headers=headers)
             response.raise_for_status()
             accounts = response.json()
             return accounts["can_write"]
@@ -132,7 +150,7 @@ def get_accounts():
     success = False
     while retries < max_retries and not success:
         try:
-            response = requests.get(f"{backend_url}/users/accounts", headers=headers)
+            response = requests.get(f"{get_backend_url()}/users/accounts", headers=headers)
             response.raise_for_status()
             accounts = response.json()
             return accounts
@@ -179,7 +197,8 @@ def fetch_all_positions_and_prices(redis_server, account_id, tickers):
             except ValueError as e:
                 logger.error(f"Error creating Position: {e}")
         else:
-            logger.error(f"No position data found for ticker: {ticker}")
+            #logger.error(f"No position data found for ticker: {ticker}")
+            pass
     
     return pd.DataFrame(positions)
 
@@ -282,7 +301,7 @@ def trade_view():
                 # Find the index of the selected trade
                 selected_index = trade_options.index(selected_trade)
                 selected_trade_data = trade_data[selected_index]
-                user_response = requests.get(f"{backend_url}/users/me", headers={"Authorization": f"Bearer {st.session_state['token']}"})
+                user_response = requests.get(f"{get_backend_url()}/users/me", headers={"Authorization": f"Bearer {st.session_state['token']}"})
                 user_data = user_response.json()
                 username = user_data.get("username", "Unknown")
                 # Display selected trade details
@@ -307,7 +326,11 @@ def position_view():
     st.header("Position View")
     account_ids = fetch_account_ids()
     if account_ids:
-        account_id = st.selectbox("Select Account ID", account_ids, key="position_view_account_id")
+        accounts = get_accounts()
+        account_names = [account["account_name"] for account in accounts if account]
+        account_name = st.selectbox("Account", account_names, key="position_view_account_id")
+        selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
+        account_id = selected_account["account_id"]
         redis_server = get_redis_connection()
         ps = redis_server.pubsub()
         ps.subscribe('position_full_key')
@@ -375,7 +398,7 @@ def single_trade():
                 selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
                 account_id = selected_account["account_id"]
                 headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-                response = requests.post(f"{backend_url}/publish/trade", json={
+                response = requests.post(f"{get_backend_url()}/publish/trade", json={
                     "account_id": account_id,
                     "ticker": ticker,
                     "quantity": quantity,
@@ -416,7 +439,7 @@ def fetch_account_ids():
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = requests.get(f"{backend_url}/users/accountIds", headers=headers)
+            response = requests.get(f"{get_backend_url()}/users/accountIds", headers=headers)
             response.raise_for_status()
             accounts = response.json()
             return accounts["can_write"]
@@ -431,7 +454,7 @@ def get_accounts():
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = requests.get(f"{backend_url}/users/accounts", headers=headers)
+            response = requests.get(f"{get_backend_url()}/users/accounts", headers=headers)
             response.raise_for_status()
             accounts = response.json()
             return accounts
@@ -500,7 +523,7 @@ def bulk_book():
                     retries = 0
                     success = False
                     while retries < max_retries and not success:
-                        response = requests.post(f"{backend_url}/publish/trade", json={
+                        response = requests.post(f"{get_backend_url()}/publish/trade", json={
                             "account_id": account_id,
                             "ticker": trade["ticker"],
                             "quantity": trade["quantity"],
@@ -539,7 +562,7 @@ def trading_dashboard():
     st.sidebar.title("Trading Dashboard Settings")
     refresh_rate = st.sidebar.slider("Refresh Rate (seconds)", 5, 60, 10)
 
-    tabs = st.tabs(["Trade View", "Position View", "Bulk Booking", "Single Trade", "Account Manager", "PNL", "Risk"])
+    tabs = st.tabs(["Trade View", "Position View", "Bulk Booking", "Single Trade", "Account Manager"])
 
     with tabs[0]:
         trade_view()
@@ -560,7 +583,7 @@ def trading_dashboard():
         account_name = st.text_input("Account Name", key="create_account_account_name")
         if st.button("Create Account", key="create_account_button"):
             headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-            response = requests.post(f"{backend_url}/publish/account/new", json={
+            response = requests.post(f"{get_backend_url()}/publish/account/new", json={
                 "account_name": account_name
             }, headers=headers)
             if response.status_code == 200:

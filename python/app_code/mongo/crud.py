@@ -2,14 +2,11 @@ from app_code.models.models import TickerPrice, Account, Trade, Position, Primar
 from app_code.mongo.database import account_collection, trade_collection, position_collection, price_collection, user_collection
 from datetime import datetime
 from typing import Optional, List
-import redis
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-r = redis.Redis(host='redis', port=6379)
-r.ping()
 
 # Helper function to convert a Pydantic model to a dict suitable for MongoDB
 def account_helper(account: Account) -> dict:

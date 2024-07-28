@@ -141,11 +141,8 @@ async def generate_trade(account_id: str, user_id: str, ticker: str, quantity: i
     logger.info("Generating trade...")
 
     primaryKey = PrimaryKey(accountId=account_id, tradeId=generate_trade_id(ticker))
-    try:
-        executed_price = retrieve_price_data(r, ticker)
-    except ValueError as e:
-        logger.error(f"Failed to retrieve price data for ticker {ticker}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve price data for ticker {ticker}")
+    executed_price = retrieve_price_data(r, ticker)
+    logger.info(f"Retrieved executed price for ticker {ticker}: {executed_price}")
 
     logger.info(f"Creating trade with executedUser: {user_id}")
 
@@ -158,6 +155,7 @@ async def generate_trade(account_id: str, user_id: str, ticker: str, quantity: i
         executedUser=user_id,
         executedTime=datetime.now()
     )
+
 
 
 def generate_trade_id(ticker: str) -> str:
