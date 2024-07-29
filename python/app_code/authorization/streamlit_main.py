@@ -582,7 +582,7 @@ def trading_dashboard():
         account_name = st.text_input("Account Name", key="create_account_account_name")
         if account_name and st.button("Create Account", key="create_account_button"):
             headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-            response = requests.post(f"http://localhost:8010/publish/account/new", json={
+            response = requests.post(f"http://main10:8010/publish/account/new", json={
                 "account_name": account_name
             }, headers=headers)
             if response.status_code == 200:
