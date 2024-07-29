@@ -188,3 +188,7 @@ async def get_user_write_accounts(username: str) -> list:
         )
         accounts.append(account)
     return accounts
+
+async def get_account_name_by_id(account_id: str) -> str:
+    account = await account_collection.find_one({"account_id": account_id})
+    return str(account["account_name"]) if account else None

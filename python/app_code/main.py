@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timedelta
 import logging
 import uuid
-from app_code.mongo.crud import get_user_write_accounts, get_user_accounts, update_user_permissions, create_user, check_user_exists, get_prices_from_datetime
+from app_code.mongo.crud import get_account_name_by_id, get_user_write_accounts, get_user_accounts, update_user_permissions, create_user, check_user_exists, get_prices_from_datetime
 from app_code.authorization.auth import authenticate_user, create_access_token, get_current_user, get_password_hash
 from app_code.redis_cache.cache_database import retrieve_price_data
 
@@ -23,6 +23,23 @@ r.ping()
 
 @app.post("/publish/account/new")
 async def publish_account(account_name: str = Body(..., embed=True), current_user: User = Depends(get_current_user)):
+    user_accounts = await get_user_accounts(current_user.username)
+    if "can_write" not in user_accounts or len(user_accounts["can_write"]) == 0:
+        return await create_new_account(account_name, current_user)
+    
+    for account_id in user_accounts["can_write"]:
+        account = await get_account_name_by_id(account_id)
+        if account is not None and account == account_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Account already exists"
+            )
+    
+    return await create_new_account(account_name, current_user)
+    
+
+
+async def create_new_account(account_name, current_user):
     try:
         logger.info(f"Creating new account with name: {account_name}")
         account_id = "ACC_" + str(uuid.uuid4())
