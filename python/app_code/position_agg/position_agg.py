@@ -41,7 +41,7 @@ def create_position(account_id: str, ticker: str, trades: List[Trade]) -> Positi
 def main():
     r = redis.Redis(host='localhost', port=6379)
     pubsub = r.pubsub()
-    pubsub.subscribe('trades-from-mongo')
+    pubsub.subscribe('trade-collection-from-mongo')
     while True:
         try:
             for message in pubsub.listen():

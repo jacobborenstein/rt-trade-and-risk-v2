@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from altair import Orient
@@ -9,30 +9,32 @@ import pandas as pd
 import re
 import redis
 import json
-import time 
+import time
 from datetime import timedelta
 from pydantic import BaseModel
 import logging
-from app_code.models.models import Position
-from app_code.redis_cache.position_joiner import retrieve_position_full_data
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Initialize session state variables
+if 'token' not in st.session_state:
+    st.session_state['token'] = None
+
+if 'page' not in st.session_state:
+    st.session_state['page'] = 'home'
 
 st.set_page_config(page_title="Trading Dashboard", page_icon=":chart_with_upwards_trend:", layout="wide")
 
 refresh_rate = 10
 
-backend_url = "http://localhost:8000"
+backend_url = "http://main:8000"
 
-#class Position(BaseModel):
- #   accountId: str = Field(..., alias="accountId")
-  #  ticker: str
-   # quantity: int
-    #position_type: PositionType = Field(..., alias="positionType")
-    #avg_price: float = Field(..., alias="avgPrice")
-    #last_updated: datetime = Field(..., alias="lastUpdated")
+class Position(BaseModel):
+    account: dict
+    ticker: str
+    quantity: int
+    average_price: float
 
 
 
@@ -59,12 +61,14 @@ def signup():
 
     if st.button("Sign Up"):
         if username and email and full_name and password:
-            response = requests.post(f"{backend_url}/users/new", json={
+            logger.info(f"Attempting to create user: {username}")
+            response = requests.post(f"{get_backend_url()}/users/new", json={
                 "username": username,
                 "email": email,
                 "full_name": full_name,
                 "password": password
             })
+            logger.info(f"Response from server: {response.status_code} - {response.text}")
             if response.status_code == 200:
                 st.success("User created successfully!")
                 st.session_state["page"] = "login"
@@ -86,10 +90,12 @@ def login():
 
     if st.button("Login"):
         if username and password:
-            response = requests.post(f"{backend_url}/token", data={
+            logger.info(f"Attempting to login user: {username}")
+            response = requests.post(f"{get_backend_url()}/token", data={
                 "username": username,
                 "password": password
             })
+            logger.info(f"Response from server: {response.status_code} - {response.text}")
             if response.status_code == 200:
                 st.success("Login successful!")
                 st.session_state["token"] = response.json()["access_token"]
@@ -108,27 +114,43 @@ def login():
 # Fetch Account IDs
 def fetch_account_ids():
     headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-    try:
-        response = requests.get(f"{backend_url}/users/accountIds", headers=headers)
-        response.raise_for_status()
-        accounts = response.json()
-        return accounts["can_write"]
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching account IDs: {e}")
-        return []
-    
+    max_retries = 3
+    retries = 0
+    success = False
+    while retries < max_retries and not success:
+        try:
+            response = requests.get(f"{get_backend_url()}/users/accountIds", headers=headers)
+            response.raise_for_status()
+            accounts = response.json()
+            return accounts["can_write"]
+        except requests.exceptions.RequestException as e:
+            retries += 1
+            logger.error(f"Error fetching account IDs: {e}. Retrying {retries}/{max_retries}")
+            time.sleep(1)  # Wait before retrying
+            if retries == max_retries:
+                st.error(f"Error fetching account IDs after {max_retries} attempts: {e}")
+                return []
+
 def get_accounts():
     headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-    try:
-        response = requests.get(f"{backend_url}/users/accounts", headers=headers)
-        response.raise_for_status()
-        accounts = response.json()
-        return accounts
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching accounts: {e}")
-        return []
+    max_retries = 3
+    retries = 0
+    success = False
+    while retries < max_retries and not success:
+        try:
+            response = requests.get(f"{get_backend_url()}/users/accounts", headers=headers)
+            response.raise_for_status()
+            accounts = response.json()
+            return accounts
+        except requests.exceptions.RequestException as e:
+            retries += 1
+            logger.error(f"Error fetching accounts: {e}. Retrying {retries}/{max_retries}")
+            time.sleep(1)  # Wait before retrying
+            if retries == max_retries:
+                st.error(f"Error fetching accounts after {max_retries} attempts: {e}")
+                return []
 
-    
+
 # Retrieve Position Data
 def retrieve_position_data(redis_server, account_id, ticker):
     position_data_json = redis_server.get(f"position:{account_id}:{ticker}")
@@ -142,12 +164,50 @@ def retrieve_position_data(redis_server, account_id, ticker):
         return position_dict
     return None
 
+# Fetch All Positions and Prices
+def fetch_all_positions_and_prices(redis_server, account_id, tickers):
+    positions = []
+    for ticker in tickers:
+        position_dict = retrieve_position_data(redis_server, account_id, ticker)
+        if position_dict:
+            try:
+                # Convert lastUpdated to datetime
+                position_dict['lastUpdated'] = pd.to_datetime(position_dict['lastUpdated'])
+                # Create Position instance aka the problem child
+                position = Position(**position_dict)
+                # Retrieve current price data
+                price = retrieve_price_data(redis_server, ticker)
+                
+                # Prepare position data for DataFrame
+                position_data = position.model_dump()
+                position_data['current_price'] = price if price else "N/A"
+                positions.append(position_data)
+            except ValueError as e:
+                logger.error(f"Error creating Position: {e}")
+        else:
+            #logger.error(f"No position data found for ticker: {ticker}")
+            pass
+    
+    return pd.DataFrame(positions)
+
+
 # Retrieve Price Data
 def retrieve_price_data(redis_server, ticker):
     price_data_json = redis_server.get(f"price:{ticker}")
     if price_data_json:
-        return json.loads(price_data_json)
-    return None
+        try:
+            price = json.loads(price_data_json)
+            if isinstance(price, (int, float)):
+                return price
+            else:
+                logger.error(f"Invalid price data for ticker {ticker}: {price}")
+                raise ValueError(f"Invalid price data for ticker {ticker}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding price data for ticker {ticker}: {e}")
+            raise ValueError(f"Error decoding price data for ticker {ticker}")
+    else:
+        logger.error(f"No price data found for ticker {ticker}")
+        raise ValueError(f"No price data found for ticker {ticker}")
 
 # Read Tickers from File
 def read_tickers_from_file():
@@ -170,8 +230,6 @@ def get_redis_connection():
         st.error(f"Error connecting to Redis: {e}")
         return None
 
-# Fetch All Positions and Prices
-import pandas as pd
 
 def fetch_all_positions_and_prices(redis_server, account_id, tickers):
     positions = []
@@ -181,33 +239,84 @@ def fetch_all_positions_and_prices(redis_server, account_id, tickers):
             try:
                 # Convert lastUpdated to datetime
                 position_dict['lastUpdated'] = pd.to_datetime(position_dict['lastUpdated'])
-                # Create Position instance aka the problem child
+                
+                # Create Position instance
                 position = Position(**position_dict)
+                
                 # Retrieve current price data
                 price = retrieve_price_data(redis_server, ticker)
                 
                 # Prepare position data for DataFrame
-                position_data = position.model_dump()
+                position_data = position.dict()
                 position_data['current_price'] = price if price else "N/A"
                 positions.append(position_data)
             except ValueError as e:
                 logger.error(f"Error creating Position: {e}")
         else:
-            logger.error(f"No position data found for ticker: {ticker}")
-    
-    return pd.DataFrame(positions)
+            logger.error(f"Trade data for key {key} could not be retrieved.")
+    return trades
+
 
 # Display Table of Trade Data
 @st.experimental_fragment(run_every=timedelta(seconds=refresh_rate))
 def trade_view():
     st.header("Trade View")
-    redis_server = get_redis_connection()
-    trade_data = []
-    tickers = read_tickers_from_file()
-    for i, ticker in enumerate(tickers):
-        trade_data.append({"Trade ID": i+1, "Symbol": ticker, "Quantity": 1, "Price": retrieve_price_data(redis_server, ticker)})
-    trade_df = pd.DataFrame(trade_data)
-    st.dataframe(trade_df)
+    account_ids = fetch_account_ids()
+    if account_ids:
+        accounts = get_accounts()
+        account_names = [account["account_name"] for account in accounts if account]
+        account_name = st.selectbox("Account", account_names, key="trade_view_account_id")
+        selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
+        account_id = selected_account["account_id"]
+        redis_server = get_redis_connection()
+        if redis_server:
+            trade_data = fetch_trade_data_by_account(redis_server, account_id)
+            if trade_data:
+                # Format data
+                for trade in trade_data:
+                    trade['executed_time'] = pd.to_datetime(trade['executed_time']).strftime('%Y-%m-%d %H:%M')
+                    trade['executed_price'] = f"${float(trade['executed_price']):,.2f}"
+                    trade['total_price'] = f"${trade['quantity'] * float(trade['executed_price'][1:].replace(',', '')):,.2f}"
+
+                # Create a DataFrame with selected columns
+                trade_df = pd.DataFrame(trade_data)
+                trade_df = trade_df.rename(columns={
+                    'executed_time': 'Time',
+                    'ticker': 'Ticker',
+                    'direction': 'Direction',
+                    'quantity': 'Quantity',
+                    'total_price': 'Total Price'
+                })
+                trade_df = trade_df[['Time', 'Ticker', 'Direction', 'Quantity', 'Total Price']]
+
+                # Display the DataFrame
+                st.dataframe(trade_df)
+
+                # Add a selectbox to choose a trade
+                trade_options = [f"{row['Time']} - {row['Ticker']} - {row['Direction']} - {row['Quantity']} - {row['Total Price']}" for idx, row in trade_df.iterrows()]
+                selected_trade = st.selectbox("Select a trade to view details:", trade_options)
+
+                # Find the index of the selected trade
+                selected_index = trade_options.index(selected_trade)
+                selected_trade_data = trade_data[selected_index]
+                user_response = requests.get(f"{get_backend_url()}/users/me", headers={"Authorization": f"Bearer {st.session_state['token']}"})
+                user_data = user_response.json()
+                username = user_data.get("username", "Unknown")
+                # Display selected trade details
+                with st.expander("Trade Details"):
+                    st.write(f"**Primary Key:** {selected_trade_data['primaryKey']}")
+                    st.write(f"**Executed Price:** ${float(selected_trade_data['executed_price'][1:].replace(',', '')):,.2f}")
+                    st.write(f"**Executed User:** {username}")
+                    st.write(f"**Direction:** {selected_trade_data['direction']}")
+                    st.write(f"**Quantity:** {selected_trade_data['quantity']}")
+                    st.write(f"**Total Price:** ${float(selected_trade_data['total_price'][1:].replace(',', '')):,.2f}")
+            else:
+                st.write("No trade data available for this account.")
+        else:
+            st.error("Unable to connect to Redis.")
+    else:
+        st.error("No account IDs available.")
+
 
 # Display Table of Position Data
 @st.experimental_fragment(run_every=timedelta(seconds=refresh_rate))
@@ -215,7 +324,11 @@ def position_view():
     st.header("Position View")
     account_ids = fetch_account_ids()
     if account_ids:
-        account_id = st.selectbox("Select Account ID", account_ids, key="position_view_account_id")
+        accounts = get_accounts()
+        account_names = [account["account_name"] for account in accounts if account]
+        account_name = st.selectbox("Account", account_names, key="position_view_account_id")
+        selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
+        account_id = selected_account["account_id"]
         redis_server = get_redis_connection()
         ps = redis_server.pubsub()
         ps.subscribe('position_full_key')
@@ -283,82 +396,90 @@ def trading_dashboard():
             tickers_path = '/app/python/tickers.txt'
             tickers_path_dev = 'python/tickers.txt'
             try:
-                with open(tickers_path_dev, 'r') as file:
+                with open(tickers_path, 'r') as file:
                     tickers = file.read().splitlines()
             except Exception as e:
                 st.error(f"Error reading tickers from file: {e}")
 
-            if "multi_trade_data" not in st.session_state:
-                st.session_state.multi_trade_data = []
+        if "multi_trade_data" not in st.session_state:
+            st.session_state.multi_trade_data = []
 
-            def add_booking():
-                st.session_state.multi_trade_data.append({"ticker": "", "quantity": 1, "direction": "BUY"})
+        def add_booking():
+            st.session_state.multi_trade_data.append({"ticker": "", "quantity": 1, "direction": "BUY"})
 
-            def update_trade(index, key, value):
-                st.session_state.multi_trade_data[index][key] = value
+        def update_trade(index, key, value):
+            st.session_state.multi_trade_data[index][key] = value
 
-            if st.button("Add Booking"):
-                add_booking()
+        if st.button("Add Booking"):
+            add_booking()
 
-            for i, trade in enumerate(st.session_state.multi_trade_data):
-                ticker = st.selectbox("Ticker", tickers, key=f"multi_trade_ticker_{i}", index=0 if trade["ticker"] == "" else tickers.index(trade["ticker"]))
-                quantity = st.number_input("Quantity", min_value=1, step=1, key=f"multi_trade_quantity_{i}", value=trade["quantity"])
-                direction = st.selectbox("Direction", ["BUY", "SELL"], key=f"multi_trade_direction_{i}", index=0 if trade["direction"] == "BUY" else 1)
-                
-                update_trade(i, "ticker", ticker)
-                update_trade(i, "quantity", quantity)
-                update_trade(i, "direction", direction)
+        for i, trade in enumerate(st.session_state.multi_trade_data):
+            ticker = st.selectbox("Ticker", tickers, key=f"multi_trade_ticker_{i}", index=0 if trade["ticker"] == "" else tickers.index(trade["ticker"]))
+            quantity = st.number_input("Quantity", min_value=1, step=1, key=f"multi_trade_quantity_{i}", value=trade["quantity"])
+            direction = st.selectbox("Direction", ["BUY", "SELL"], key=f"multi_trade_direction_{i}", index=0 if trade["direction"] == "BUY" else 1)
 
-            bulk_input = st.text_area("Or enter all trades in the following format: IMB, 1000, B. MSFT, 2000, S. AMZN, 300, S.")
-            
-            def parse_bulk_input(bulk_input):
-                # Regular expression to parse input
-                trade_pattern = re.compile(r'(\w+),\s*(\d+),\s*([BS])')
-                trades = trade_pattern.findall(bulk_input)
-                return [{"ticker": t[0], "quantity": int(t[1]), "direction": "BUY" if t[2] == "B" else "SELL"} for t in trades]
+            update_trade(i, "ticker", ticker)
+            update_trade(i, "quantity", quantity)
+            update_trade(i, "direction", direction)
 
-            if st.button("Submit All Trades"):
-                if account_name:
-                    selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
-                    account_id = selected_account["account_id"]
-                    headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-                    
-                    all_trades_successful = True
-                    trades_to_submit = st.session_state.multi_trade_data
-                    
-                    if bulk_input:
-                        trades_to_submit += parse_bulk_input(bulk_input)
+        bulk_input = st.text_area("Or enter all trades in the following format: AAPL, 24, B. MSFT, 8, S. NVDA, 11, B. C, 1000, S.")
 
-                    # Validate trades
-                    invalid_tickers = [trade["ticker"] for trade in trades_to_submit if trade["ticker"] not in tickers]
-                    if invalid_tickers:
-                        st.error(f"Invalid tickers found: {', '.join(invalid_tickers)}")
+        if st.button("Submit All Trades"):
+            if account_name:
+                selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
+                account_id = selected_account["account_id"]
+                headers = {"Authorization": f"Bearer {st.session_state['token']}"}
+
+                all_trades_successful = True
+                trades_to_submit = st.session_state.multi_trade_data
+
+                if bulk_input:
+                    try:
+                        trades_to_submit = parse_bulk_input(bulk_input)
+                        invalid_tickers = [trade["ticker"] for trade in trades_to_submit if trade["ticker"] not in tickers]
+                        if invalid_tickers:
+                            st.error(f"Invalid tickers found: {', '.join(invalid_tickers)}")
+                            all_trades_successful = False
+                    except ValueError as e:
+                        st.error(str(e))
                         all_trades_successful = False
 
-                    if all_trades_successful:
-                        for trade in trades_to_submit:
-                            response = requests.post(f"{backend_url}/publish/trade", json={
-                                "account_id": account_id,
-                                "ticker": trade["ticker"],
-                                "quantity": trade["quantity"],
-                                "direction": trade["direction"]
-                            }, headers=headers)
+                max_retries = 3
+                for trade in trades_to_submit:
+                    retries = 0
+                    success = False
+                    while retries < max_retries and not success:
+                        response = requests.post(f"{get_backend_url()}/publish/trade", json={
+                            "account_id": account_id,
+                            "ticker": trade["ticker"],
+                            "quantity": trade["quantity"],
+                            "direction": trade["direction"]
+                        }, headers=headers)
 
-                            if response.status_code != 200:
-                                all_trades_successful = False
-                                st.error(f"Error submitting trade for {trade['ticker']}: {response.text}")
-                                break
+                        if response.status_code == 200:
+                            response_data = response.json()
+                            success = True
+                        else:
+                            retries += 1
+                            logger.error(f"Error submitting trade for {trade['ticker']}: {response.text}")
+                            time.sleep(1)  # Backoff before retrying
 
-                    if all_trades_successful:
-                        st.success("All trades submitted successfully!")
-                        st.session_state.multi_trade_data = []
-                    else:
-                        st.error("One or more trades failed to submit.")
-                    
-                    time.sleep(5)
-                    st.experimental_rerun()
-        else:
-            st.error("User has no accounts")
+                    if not success:
+                        all_trades_successful = False
+                        st.error(f"Failed to submit trade for {trade['ticker']} after {max_retries} attempts.")
+                        break
+
+                if all_trades_successful:
+                    st.success("All trades submitted successfully!")
+                    st.session_state.multi_trade_data = []
+                    st.experimental_set_query_params()  # Clear the text area after submission
+                else:
+                    st.error("One or more trades failed to submit.")
+
+                time.sleep(5)
+                st.experimental_rerun()
+    else:
+        st.error("User has no accounts")
 
     with tabs[3]:
         st.header("Single trade")
@@ -375,7 +496,7 @@ def trading_dashboard():
             # tickers_path_development = '/app/python/tickers.txt'
 
             try:
-                with open(tickers_path_dev, 'r') as file:
+                with open(tickers_path, 'r') as file:
                     tickers = file.read().splitlines()
             except Exception as e:
                 st.error(f"Error reading tickers from file: {e}")
@@ -412,21 +533,23 @@ def trading_dashboard():
     
     with tabs[4]:
         st.header("Account Manager")
-        st.write("account manager")
 
         account_name = st.text_input("Account Name", key="create_account_account_name")
-        if st.button("Create Account", key="create_account_button"):
+        if account_name and st.button("Create Account", key="create_account_button"):
             headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-            response = requests.post(f"{backend_url}/publish/account/new", json={
+            response = requests.post(f"http://main10:8010/publish/account/new", json={
                 "account_name": account_name
             }, headers=headers)
             if response.status_code == 200:
                 st.success("Account created successfully!")
+                time.sleep(5)
                 # Force a reload of accounts in session state
                 st.session_state.pop("accounts", None)
-                st.experimental_rerun()
+                trading_dashboard()
+                st.rerun()
             else:
-                st.error("Error creating account")
+                st.error("Error creating account: " + str(response.status_code))
+                time.sleep(3)
                 st.experimental_rerun()
         if st.button("Logout"):
             st.session_state["token"] = None
@@ -438,12 +561,6 @@ def trading_dashboard():
 
 # Main Function
 def main():
-    if "page" not in st.session_state:
-        st.session_state["page"] = "home"
-
-    if "token" not in st.session_state:
-        st.session_state["token"] = None
-
     if st.session_state["token"] is None:
         if st.session_state["page"] == "signup":
             signup()

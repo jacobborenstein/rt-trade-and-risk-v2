@@ -1,10 +1,13 @@
-from app_code.models.models import Trade
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
 from app_code.models.models import Direction
 from app_code.mongo.crud import get_prices_from_datetime
 from app_code.mongo.crud import get_trades_by_account_by_ticker
+from app_code.authorization.streamlit_main import get_backend_url
 from app_code.redis_cache.cache_database import retrieve_position_data, PositionKey, retrieve_price_data
-import sys
-import os
 import asyncio
 import json
 import time
@@ -14,8 +17,7 @@ import logging
 import requests
 
 
-sys.path.append(os.path.abspath(os.path.join(
-    os.path.dirname(__file__), "..", "..")))
+
 
 
 logging.basicConfig(level=logging.INFO)
@@ -110,7 +112,7 @@ async def calculate_realized_pnl_today(position):
 
 
 async def calculate_unrealized_pnl_today(position, current_price):
-    response = requests.get(f"http://localhost:8000/prices/{position.ticker}")
+    response = requests.get(f"http://main:8000/prices/{position.ticker}")
     if response.status_code == 200:
         prices = response.json()
     logger.info(prices[0])

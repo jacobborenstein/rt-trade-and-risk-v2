@@ -1,6 +1,3 @@
-#script that combines thet data of the position raw with the P%L data and the Risk data to produce a position full
-
-
 import sys
 import os
 
@@ -8,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pydantic import Field
 from models.models import Position, PositionType
 from datetime import datetime
-from app_code.redis_cache.cache_database import retrieve_position_data
+from cache_database import retrieve_position_data
 import redis
 import json
 import time

@@ -27,7 +27,7 @@
             }
         },
         {
-            "name": "Run Main",
+            "name": "Run Main on port 8000",
             "type": "python",
             "request": "launch",
             "module": "uvicorn",
@@ -38,6 +38,294 @@
                 "PYTHONPATH": "${workspaceFolder}/python"
             }
         },
+        {
+            "name": "Run Main on port 8001",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8001"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main on port 8002",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8002"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main on port 8003",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8003"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main on port 8004",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8004"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main on port 8005",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8005"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main on port 8006",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8006"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main on port 8007",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8007"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main on port 8008",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8008"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main on port 8009",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8009"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Main on port 8010",
+            "type": "python",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": ["app_code.main:app", "--reload", "--port", "8010"],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        // {
+        //     "name": "Run Main on port 8011",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8011"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8012",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8012"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8013",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8013"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8014",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8014"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8015",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8015"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8016",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8016"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8017",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8017"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8018",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8018"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8019",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8019"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8020",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8020"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8021",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8021"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8022",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8022"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8023",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8023"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
+        // {
+        //     "name": "Run Main on port 8024",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "module": "uvicorn",
+        //     "args": ["app_code.main:app", "--reload", "--port", "8024"],
+        //     "console": "integratedTerminal",
+        //     "cwd": "${workspaceFolder}/python",
+        //     "env": {
+        //         "PYTHONPATH": "${workspaceFolder}/python"
+        //     }
+        // },
         {
             "name": "Run Position Aggregator",
             "type": "python",
@@ -56,6 +344,17 @@
             "program": "${workspaceFolder}/python/app_code/PNL/profits_n_losses.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/python/app_code/PNL",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/python"
+            }
+        },
+        {
+            "name": "Run Position Joiner",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/python/app_code/redis_cache/position_joiner.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/python/app_code/redis_cache",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/python"
             }
@@ -99,7 +398,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/python/app_code/risk_calc/risk_service.py",
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/python/app_code/price_feed",
+            "cwd": "${workspaceFolder}/python/app_code/risk_calc",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/python"
             }
@@ -121,7 +420,31 @@
         {
             "name": "Run All Services",
             "configurations": [
-                "Run Main",
+                "Run Main on port 8000",
+                "Run Main on port 8001",
+                "Run Main on port 8002",
+                "Run Main on port 8003",
+                "Run Main on port 8004",
+                "Run Main on port 8005",
+                "Run Main on port 8006",
+                "Run Main on port 8007",
+                "Run Main on port 8008",
+                "Run Main on port 8009",
+                "Run Main on port 8010",
+                // "Run Main on port 8011",
+                // "Run Main on port 8012",
+                // "Run Main on port 8013",
+                // "Run Main on port 8014",
+                // "Run Main on port 8015",
+                // "Run Main on port 8016",
+                // "Run Main on port 8017",
+                // "Run Main on port 8018",
+                // "Run Main on port 8019",
+                // "Run Main on port 8020",
+                // "Run Main on port 8021",
+                // "Run Main on port 8022",
+                // "Run Main on port 8023",
+                // "Run Main on port 8024",
                 "Run Position Aggregator",
                 "Run Price Feed Publisher",
                 "Run Mongo",
@@ -129,6 +452,7 @@
                 "Run position joiner",
                 "Run Streamlit Page",
                 "Run PL",
+                "Run Position Joiner",
                 "Run Risk"
             ]
         },

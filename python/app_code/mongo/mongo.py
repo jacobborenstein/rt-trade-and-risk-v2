@@ -53,8 +53,16 @@ async def handle_message(r, message):
             **trade.model_dump(by_alias=True),
             'executedTime': trade.executed_time.isoformat()  # Convert datetime to string
         } for trade in trades])
-        r.publish('trades-from-mongo', trades_json)
+        r.publish('trade-collection-from-mongo', trades_json)
         logger.info(f"mongo-6) Published trades for ticker {trade.ticker} to Position Aggregator")
+        
+        # create single trade json to send to redis db
+        single_trade_json = json.dumps([{
+            **trade.model_dump(by_alias=True),
+            'executedTime': trade.executed_time.isoformat()  # Convert datetime to string
+        }])
+        r.publish('trades-from-mongo', single_trade_json)
+        logger.info(f"mongo: Published new trade for ticker {trade.ticker} to redis db")
 
     elif channel == 'positions':
         position_dict = json.loads(data)
@@ -87,15 +95,15 @@ async def handle_message(r, message):
 
     elif channel == 'prices_and_values':
         price_dict = json.loads(data)
-        logger.info(f"mongo-7) Received price data: {price_dict}")
+        # logger.info(f"mongo-7) Received price data: {price_dict}")
         
         ticker_price = TickerPrice(**price_dict)
-        logger.info(f"mongo-7.5) Parsed TickerPrice: {ticker_price}")
+        # logger.info(f"mongo-7.5) Parsed TickerPrice: {ticker_price}")
         
         last_tickerprice_data = await get_price_for_ticker(ticker_price.ticker)
         if last_tickerprice_data:
             last_updated_str = last_tickerprice_data['time']
-            logger.info(f"mongo-7.6) Last updated string from Mongo: {last_updated_str}")
+            # logger.info(f"mongo-7.6) Last updated string from Mongo: {last_updated_str}")
 
             if isinstance(last_updated_str, datetime):
                 last_updated_dt = last_updated_str
@@ -103,8 +111,8 @@ async def handle_message(r, message):
                 last_updated_dt = datetime.fromisoformat(last_updated_str)
             
             last_time_sent_to_mongo = last_updated_dt.timestamp()
-            logger.info(f"mongo-8) Last time sent to mongo (timestamp): {last_time_sent_to_mongo}")
-            logger.info(f"mongo-8.1) Last time sent to mongo (datetime): {last_updated_dt}")
+            # logger.info(f"mongo-8) Last time sent to mongo (timestamp): {last_time_sent_to_mongo}")
+            # logger.info(f"mongo-8.1) Last time sent to mongo (datetime): {last_updated_dt}")
         else:
             last_time_sent_to_mongo = 0
             logger.info("mongo-8) No previous price data found in MongoDB for this ticker.")
@@ -112,15 +120,15 @@ async def handle_message(r, message):
         current_time = ticker_price.time.timestamp()
         time_difference = current_time - last_time_sent_to_mongo
 
-        logger.info(f"mongo-11) Current time (timestamp): {current_time}")
-        logger.info(f"mongo-11.1) Current time (datetime): {datetime.fromtimestamp(current_time)}")
-        logger.info(f"mongo-11.2) Time since last sent to mongo: {time_difference} seconds ({time_difference / 60} minutes)")
+        # logger.info(f"mongo-11) Current time (timestamp): {current_time}")
+        # logger.info(f"mongo-11.1) Current time (datetime): {datetime.fromtimestamp(current_time)}")
+        # logger.info(f"mongo-11.2) Time since last sent to mongo: {time_difference} seconds ({time_difference / 60} minutes)")
 
         if time_difference >= 600:
             result = await add_ticker_price(ticker_price)
-            logger.info(f"mongo-12) Added price data for ticker: {ticker_price.ticker} and price: {ticker_price.price} to MongoDB")
-        else:
-            logger.info(f"mongo-13) TickerPrice data not sent to MongoDB. Already sent within 10 minutes.")
+            # logger.info(f"mongo-12) Added price data for ticker: {ticker_price.ticker} and price: {ticker_price.price} to MongoDB")
+        # else:
+            # logger.info(f"mongo-13) TickerPrice data not sent to MongoDB. Already sent within 10 minutes.")
 
 if __name__ == "__main__":
     asyncio.run(main())
