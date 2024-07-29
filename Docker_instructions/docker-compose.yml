@@ -169,7 +169,17 @@ services:
       - "8501:8501"
     depends_on:
       - redis
-      - main
+      - main0
+      - main1
+      - main2
+      - main3
+      - main4
+      - main5
+      - main6
+      - main7
+      - main8
+      - main9
+      - main10
 
   Profits_and_Losses:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
