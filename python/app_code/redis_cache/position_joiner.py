@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pydantic import Field
 from models.models import Position, PositionType
 from datetime import datetime
-from app_code.redis_cache.cache_database import retrieve_position_data
+from redis_cache.cache_database import retrieve_position_data
 import redis
 import json
 import time
