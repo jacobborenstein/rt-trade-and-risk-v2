@@ -5,6 +5,8 @@ services:
     image: redis:latest
     ports:
       - "6379:6379"
+    networks:
+      - mynetwork
 
   mongo:
     image: mongo:latest
@@ -17,6 +19,9 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+    networks:
+      - mynetwork
+
 
   price_publisher:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -25,6 +30,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   cache_DB:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -33,6 +41,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   main0:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -43,6 +54,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   main1:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -53,6 +67,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   main2:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -63,6 +80,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   main3:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -73,6 +93,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   main4:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -83,6 +106,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   main5:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -93,6 +119,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   main6:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -103,6 +132,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   main7:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -123,6 +155,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   main9:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -133,6 +168,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
       
   main10:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -143,6 +181,8 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
 
 
   positions_ag:
@@ -152,6 +192,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   mongo_service:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -160,6 +203,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   Streamlit_UI:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -180,6 +226,9 @@ services:
       - main8
       - main9
       - main10
+    networks:
+      - mynetwork
+
 
   Profits_and_Losses:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -188,6 +237,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   Risk:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -196,6 +248,9 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
   Position_Joiner:
     image: ghcr.io/jacobborenstein/rt-trade-and-risk-v2/project:latest
@@ -204,6 +259,13 @@ services:
     depends_on:
       - redis
       - mongo
+    networks:
+      - mynetwork
+
 
 volumes:
   mongo_data:
+
+networks:
+  mynetwork:
+    driver: bridge

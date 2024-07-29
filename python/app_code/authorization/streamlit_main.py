@@ -33,16 +33,16 @@ refresh_rate = 10
 # round robin load balancing function
 def get_backend_url():
     urls = [
-        "http://main:8000",
-        "http://main:8001",
-        "http://main:8002",
-        "http://main:8003",
-        "http://main:8004",
-        "http://main:8005",
-        "http://main:8006",
-        "http://main:8007",
-        "http://main:8008",
-        "http://main:8009",
+        "http://main0:8000",
+        "http://main1:8001",
+        "http://main2:8002",
+        "http://main3:8003",
+        "http://main4:8004",
+        "http://main5:8005",
+        "http://main6:8006",
+        "http://main7:8007",
+        "http://main8:8008",
+        "http://main9:8009",
     ]
     return urls[int(time.time()) % len(urls)]
 
@@ -582,7 +582,7 @@ def trading_dashboard():
         account_name = st.text_input("Account Name", key="create_account_account_name")
         if account_name and st.button("Create Account", key="create_account_button"):
             headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-            response = requests.post(f"http://main:8010/publish/account/new", json={
+            response = requests.post(f"http://localhost:8010/publish/account/new", json={
                 "account_name": account_name
             }, headers=headers)
             if response.status_code == 200:
