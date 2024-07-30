@@ -33,19 +33,18 @@ refresh_rate = 10
 # round robin load balancing function
 def get_backend_url():
     urls = [
-        "http://localhost:8000",
-        "http://localhost:8001",
-        "http://localhost:8002",
-        "http://localhost:8003",
-        "http://localhost:8004",
-        #"http://localhost:8005",
-        #"http://localhost:8006",
-        #"http://localhost:8007",
-        #"http://localhost:8008",
-        #"http://localhost:8009",
+        "http://main0:8000",
+        "http://main1:8001",
+        "http://main2:8002",
+        "http://main3:8003",
+        "http://main4:8004",
+        "http://main5:8005",
+        "http://main6:8006",
+        "http://main7:8007",
+        "http://main8:8008",
+        "http://main9:8009",
     ]
     return urls[int(time.time()) % len(urls)]
-
 # backend_url = "http://18.214.165.102/backend"
 # backend_url = "http://localhost:8000"
 
@@ -226,7 +225,7 @@ def read_tickers_from_file():
     tickers_path = '/app/python/tickers.txt'
     tickers_path_development = 'python/tickers.txt'
     try:
-        with open(tickers_path_development, 'r') as file:
+        with open(tickers_path, 'r') as file:
             tickers = file.read().splitlines()
         return tickers
     except Exception as e:
@@ -236,7 +235,7 @@ def read_tickers_from_file():
 # Get Redis Connection
 def get_redis_connection():
     try:
-        r = redis.Redis(host='localhost', port=6379)
+        r = redis.Redis(host='redis', port=6379)
         return r
     except Exception as e:
         st.error(f"Error connecting to Redis: {e}")
@@ -273,12 +272,17 @@ def trade_view():
         redis_server = get_redis_connection()
         if redis_server:
             trade_data = fetch_trade_data_by_account(redis_server, account_id)
+            user_response = requests.get(f"{get_backend_url()}/users/me", headers={"Authorization": f"Bearer {st.session_state['token']}"})
+            user_data = user_response.json()
+            username = user_data.get("username", "Unknown")
             if trade_data:
                 # Format data
                 for trade in trade_data:
                     trade['executed_time'] = pd.to_datetime(trade['executed_time']).strftime('%Y-%m-%d %H:%M')
                     trade['executed_price'] = f"${float(trade['executed_price']):,.2f}"
                     trade['total_price'] = f"${trade['quantity'] * float(trade['executed_price'][1:].replace(',', '')):,.2f}"
+                    trade['primaryKey'] = f"{trade['primaryKey']['account_id']} - {trade['primaryKey']['trade_id']}"
+                    trade['executed_user'] = username
 
                 # Create a DataFrame with selected columns
                 trade_df = pd.DataFrame(trade_data)
@@ -287,31 +291,19 @@ def trade_view():
                     'ticker': 'Ticker',
                     'direction': 'Direction',
                     'quantity': 'Quantity',
-                    'total_price': 'Total Price'
+                    'total_price': 'Total Price',
+                    'executed_price': 'Executed Price',
+                    'executed_user': 'Executed User',
+                    'primaryKey': 'Primary Key'
                 })
-                trade_df = trade_df[['Time', 'Ticker', 'Direction', 'Quantity', 'Total Price']]
+                trade_df = trade_df[['Time', 'Ticker', 'Direction', 'Quantity', 'Total Price', 'Executed Price', 'Executed User', 'Primary Key']]
 
-                # Display the DataFrame
-                st.dataframe(trade_df)
+                # Add a column for the row numbers starting from 1
+                trade_df.insert(0, 'No.', range(1, len(trade_df) + 1))
 
-                # Add a selectbox to choose a trade
-                trade_options = [f"{row['Time']} - {row['Ticker']} - {row['Direction']} - {row['Quantity']} - {row['Total Price']}" for idx, row in trade_df.iterrows()]
-                selected_trade = st.selectbox("Select a trade to view details:", trade_options)
+                # Display the DataFrame without the default index
+                st.dataframe(trade_df.set_index('No.'))
 
-                # Find the index of the selected trade
-                selected_index = trade_options.index(selected_trade)
-                selected_trade_data = trade_data[selected_index]
-                user_response = requests.get(f"{get_backend_url()}/users/me", headers={"Authorization": f"Bearer {st.session_state['token']}"})
-                user_data = user_response.json()
-                username = user_data.get("username", "Unknown")
-                # Display selected trade details
-                with st.expander("Trade Details"):
-                    st.write(f"**Primary Key:** {selected_trade_data['primaryKey']}")
-                    st.write(f"**Executed Price:** ${float(selected_trade_data['executed_price'][1:].replace(',', '')):,.2f}")
-                    st.write(f"**Executed User:** {username}")
-                    st.write(f"**Direction:** {selected_trade_data['direction']}")
-                    st.write(f"**Quantity:** {selected_trade_data['quantity']}")
-                    st.write(f"**Total Price:** ${float(selected_trade_data['total_price'][1:].replace(',', '')):,.2f}")
             else:
                 st.write("No trade data available for this account.")
         else:
@@ -364,12 +356,12 @@ def position_view():
                         #df.drop(columns=["ticker"])
                         df.columns = columns
                         df = df.drop(columns=['Ticker'])
-                        df['Avg. Price'] = df['Avg. Price'].apply(lambda x: f'${x:.2f}')
-                        df['Realized PnL'] = df['Realized PnL'].apply(lambda x: f'${x:.2f}')
-                        df['Unrealized PnL'] = df['Unrealized PnL'].apply(lambda x: f'${x:.2f}')
-                        df['Realized PnL Today'] = df['Realized PnL Today'].apply(lambda x: f'${x:.2f}')
-                        df['Total PnL Today'] = df['Total PnL Today'].apply(lambda x: f'${x:.2f}')
-                        df['Total PnL'] = df['Total PnL'].apply(lambda x: f'${x:.2f}')
+                        df['Avg. Price'] = df['Avg. Price'].apply(lambda x: f"${x:,.2f}")
+                        df['Realized PnL'] = df['Realized PnL'].apply(lambda x: f"${x:,.2f}")
+                        df['Unrealized PnL'] = df['Unrealized PnL'].apply(lambda x: f"${x:,.2f}")
+                        df['Realized PnL Today'] = df['Realized PnL Today'].apply(lambda x: f"${x:,.2f}")
+                        df['Total PnL Today'] = df['Total PnL Today'].apply(lambda x: f"${x:,.2f}")
+                        df['Total PnL'] = df['Total PnL'].apply(lambda x: f"${x:,.2f}")
                         st.dataframe(df)
                         #full_data = retrieve_position_full_data(redis_server, expanded)
                         #st.write(full_data)
@@ -380,6 +372,7 @@ def position_view():
             st.error("Unable to connect to Redis.")
     else:
         st.error("No account IDs available.")
+
 
 
 
@@ -530,38 +523,46 @@ def bulk_book():
                     except ValueError as e:
                         st.error(str(e))
                         all_trades_successful = False
+                
+                # progress_bar = st.progress(0)
+                # progress_step = 100 / len(trades_to_submit)
+                with st.spinner("Submitting trades..."):
+                    max_retries = 3
+                    for i, trade in enumerate(trades_to_submit):
+                        retries = 0
+                        success = False
+                        while retries < max_retries and not success:
+                            response = requests.post(f"{get_backend_url()}/publish/trade", json={
+                                "account_id": account_id,
+                                "ticker": trade["ticker"],
+                                "quantity": trade["quantity"],
+                                "direction": trade["direction"]
+                            }, headers=headers)
 
-                max_retries = 3
-                for trade in trades_to_submit:
-                    retries = 0
-                    success = False
-                    while retries < max_retries and not success:
-                        response = requests.post(f"{get_backend_url()}/publish/trade", json={
-                            "account_id": account_id,
-                            "ticker": trade["ticker"],
-                            "quantity": trade["quantity"],
-                            "direction": trade["direction"]
-                        }, headers=headers)
+                            if response.status_code == 200:
+                                response_data = response.json()
+                                success = True
+                            else:
+                                retries += 1
+                                logger.error(f"Error submitting trade for {trade['ticker']}: {response.text}")
+                                time.sleep(1)  # Backoff before retrying
 
-                        if response.status_code == 200:
-                            response_data = response.json()
-                            success = True
-                        else:
-                            retries += 1
-                            logger.error(f"Error submitting trade for {trade['ticker']}: {response.text}")
-                            time.sleep(1)  # Backoff before retrying
+                        if not success:
+                            all_trades_successful = False
+                            st.error(f"Failed to submit trade for {trade['ticker']} after {max_retries} attempts.")
+                            break
 
-                    if not success:
-                        all_trades_successful = False
-                        st.error(f"Failed to submit trade for {trade['ticker']} after {max_retries} attempts.")
-                        break
+                        # progress_bar.progress(int((i + 1)) * progress_step)
 
                 if all_trades_successful:
                     st.success("All trades submitted successfully!")
+                    st.balloons()
+                    time.sleep(5)
                     st.session_state.multi_trade_data = []
-                    st.experimental_set_query_params()  # Clear the text area after submission
                 else:
                     st.error("One or more trades failed to submit.")
+                
+                # progress_bar.empty()
 
                 time.sleep(5)
                 st.experimental_rerun()
@@ -593,9 +594,9 @@ def trading_dashboard():
         st.header("Account Manager")
 
         account_name = st.text_input("Account Name", key="create_account_account_name")
-        if account_name and st.button("Create Account", key="create_account_button"):
+        if st.button("Create Account", key="create_account_button") and account_name:
             headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-            response = requests.post(f"http://localhost:8010/publish/account/new", json={
+            response = requests.post(f"http://main10:8010/publish/account/new", json={
                 "account_name": account_name
             }, headers=headers)
             if response.status_code == 200:
@@ -603,7 +604,6 @@ def trading_dashboard():
                 time.sleep(5)
                 # Force a reload of accounts in session state
                 st.session_state.pop("accounts", None)
-                #trading_dashboard() rest in spaghetti
                 st.rerun()
             else:
                 st.error("Error creating account: " + str(response.status_code))

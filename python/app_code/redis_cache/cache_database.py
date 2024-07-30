@@ -92,7 +92,7 @@ def main():
     #set up redis and susbsribe to 'positions' channel to get postions data
     try:
         print("Connecting to Redis...")
-        r = redis.Redis(host='localhost', port=6379)
+        r = redis.Redis(host='redis', port=6379)
         pubsub = r.pubsub()
         pubsub.subscribe('positions','trades-from-mongo','prices_and_values')
         print("Subscribed to channels")
