@@ -33,16 +33,16 @@ refresh_rate = 10
 # round robin load balancing function
 def get_backend_url():
     urls = [
-        "http://main0:8000",
-        "http://main1:8001",
-        "http://main2:8002",
-        "http://main3:8003",
-        "http://main4:8004",
-        "http://main5:8005",
-        "http://main6:8006",
-        "http://main7:8007",
-        "http://main8:8008",
-        "http://main9:8009",
+        "http://localhost:8000",
+        "http://localhost:8001",
+        "http://localhost:8002",
+        "http://localhost:8003",
+        "http://localhost:8004",
+        #"http://localhost:8005",
+        #"http://localhost:8006",
+        #"http://localhost:8007",
+        #"http://localhost:8008",
+        #"http://localhost:8009",
     ]
     return urls[int(time.time()) % len(urls)]
 
@@ -226,7 +226,7 @@ def read_tickers_from_file():
     tickers_path = '/app/python/tickers.txt'
     tickers_path_development = 'python/tickers.txt'
     try:
-        with open(tickers_path, 'r') as file:
+        with open(tickers_path_development, 'r') as file:
             tickers = file.read().splitlines()
         return tickers
     except Exception as e:
@@ -236,7 +236,7 @@ def read_tickers_from_file():
 # Get Redis Connection
 def get_redis_connection():
     try:
-        r = redis.Redis(host='redis', port=6379)
+        r = redis.Redis(host='localhost', port=6379)
         return r
     except Exception as e:
         st.error(f"Error connecting to Redis: {e}")
@@ -343,21 +343,34 @@ def position_view():
                     st.write("There are no positions for this account. Please check back after making some trades.")
                 else:
                     #order = ['last_updated', 'account_id', 'ticker', 'quantity', 'position_type', 'avg_price']
-                    sorted_df = position_df.sort_values(by='last_updated', ascending=False)
-                    sorted_df.drop(columns=['last_updated'])
-                    sorted_df.columns = ['Account ID', 'Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'last_updated' ,'']
-                    st.dataframe(sorted_df.drop(columns=['Account ID', 'last_updated','']))
-                    expanded = st.selectbox("Select a ticker to see more info", sorted_df['Ticker'])
+                    #sorted_df = position_df.sort_values(by='last_updated', ascending=False)
+                    #sorted_df.drop(columns=['last_updated'])
+                    #sorted_df.columns = ['Account ID', 'Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'last_updated' ,'']
+                    #st.dataframe(sorted_df.drop(columns=['Account ID', 'last_updated','']))
+                    used_tickers = position_df['ticker']
+                    full_dict = {}
+                    expanded = True
                     if expanded:
-                        key = f"combined:{account_id}:{expanded}"
-                        json_data = redis_server.get(key)
-                        if json_data is not None:
-                            data = json.loads(json_data)
-                            dict(data).pop('account')
-                            dict(data).pop('ticker')
-                            #dict(data).pop('last updated')
-                            df = pd.DataFrame.from_dict(data, orient='index')
-                            st.dataframe(df)
+                        for ticker in used_tickers:
+                            key = f"combined:{account_id}:{ticker}"
+                            json_data = redis_server.get(key)
+                            if json_data is not None:
+                                data = json.loads(json_data)
+                                #dict(data).pop('ticker')
+                                full_dict[ticker] = data
+                                #dict(data).pop('last updated')
+                        columns = ['Account','Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'Realized PnL','Unrealized PnL', 'Realized PnL Today','Total PnL','Total PnL Today','Standart Deviation','Sharpe Ratio','Alpha','Beta','R^2','Last Updated' ,'']
+                        df = pd.DataFrame.from_dict(full_dict, orient='index')
+                        #df.drop(columns=["ticker"])
+                        df.columns = columns
+                        df = df.drop(columns=['Ticker'])
+                        df['Avg. Price'] = df['Avg. Price'].apply(lambda x: f'${x:.2f}')
+                        df['Realized PnL'] = df['Realized PnL'].apply(lambda x: f'${x:.2f}')
+                        df['Unrealized PnL'] = df['Unrealized PnL'].apply(lambda x: f'${x:.2f}')
+                        df['Realized PnL Today'] = df['Realized PnL Today'].apply(lambda x: f'${x:.2f}')
+                        df['Total PnL Today'] = df['Total PnL Today'].apply(lambda x: f'${x:.2f}')
+                        df['Total PnL'] = df['Total PnL'].apply(lambda x: f'${x:.2f}')
+                        st.dataframe(df)
                         #full_data = retrieve_position_full_data(redis_server, expanded)
                         #st.write(full_data)
 
@@ -582,7 +595,7 @@ def trading_dashboard():
         account_name = st.text_input("Account Name", key="create_account_account_name")
         if account_name and st.button("Create Account", key="create_account_button"):
             headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-            response = requests.post(f"http://main10:8010/publish/account/new", json={
+            response = requests.post(f"http://localhost:8010/publish/account/new", json={
                 "account_name": account_name
             }, headers=headers)
             if response.status_code == 200:
@@ -590,7 +603,7 @@ def trading_dashboard():
                 time.sleep(5)
                 # Force a reload of accounts in session state
                 st.session_state.pop("accounts", None)
-                trading_dashboard()
+                #trading_dashboard() rest in spaghetti
                 st.rerun()
             else:
                 st.error("Error creating account: " + str(response.status_code))
