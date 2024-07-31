@@ -9,7 +9,7 @@ import re
 import redis
 import json
 import time
-from datetime import timedelta
+from datetime import timedelta, datetime
 from pydantic import BaseModel
 import logging
 from app_code.models.models import Trade, Position
@@ -32,16 +32,16 @@ refresh_rate = 10
 # round robin load balancing function
 def get_backend_url():
     urls = [
-        "http://localhost:8000",
-        "http://localhost:8001",
-        "http://localhost:8002",
-        "http://localhost:8003",
-        "http://localhost:8004",
-        "http://localhost:8005",
-        "http://localhost:8006",
-        "http://localhost:8007",
-        "http://localhost:8008",
-        "http://localhost:8009",
+        "http://main0:8000",
+        "http://main1:8001",
+        "http://main2:8002",
+        "http://main3:8003",
+        "http://main4:8004",
+        "http://main5:8005",
+        "http://main6:8006",
+        "http://main7:8007",
+        "http://main8:8008",
+        "http://main9:8009",
     ]
     return urls[int(time.time()) % len(urls)]
 
@@ -180,7 +180,7 @@ def read_tickers_from_file():
     tickers_path = '/app/python/tickers.txt'
     tickers_path_development = 'python/tickers.txt'
     try:
-        with open(tickers_path_development, 'r') as file:
+        with open(tickers_path, 'r') as file:
             tickers = file.read().splitlines()
         return tickers
     except Exception as e:
@@ -190,7 +190,7 @@ def read_tickers_from_file():
 # Get Redis Connection
 def get_redis_connection():
     try:
-        r = redis.Redis(host='localhost', port=6379)
+        r = redis.Redis(host='redis', port=6379)
         return r
     except Exception as e:
         st.error(f"Error connecting to Redis: {e}")
@@ -302,6 +302,52 @@ def fetch_all_positions_and_prices(redis_server, account_id, tickers):
     
     return positions
 
+def get_full_position_data(redis_server, account_id, ticker):
+    position_raw = retrieve_position_data(redis_server, account_id, ticker)
+    if position_raw is None:
+        raise ValueError(f"No position data found for account {account_id} and ticker {ticker}")
+
+    pnl_data_json = redis_server.get(f"PNL:{account_id}:{ticker}")
+    if pnl_data_json is None:
+        raise ValueError(f"No PnL data found for account {account_id} and ticker {ticker}")
+    pnl_data = json.loads(pnl_data_json)
+
+    risk_data_json = redis_server.get(f"risk:{account_id}:{ticker}")
+    if risk_data_json is None:
+        raise ValueError(f"No risk data found for account {account_id} and ticker {ticker}")
+    risk_data = json.loads(risk_data_json)
+
+    combined_data_dic = {
+        # Position raw data
+        'account': account_id,
+        'ticker': ticker,
+        'quantity': position_raw['quantity'],
+        'position type': position_raw['positionType'],
+        'avg price': position_raw['avgPrice'],
+
+        # Profits and Losses data
+        'realized pnl': pnl_data['realized_pnl'],
+        'unrealized pnl': pnl_data['unrealized_pnl'],
+        'unrealized pnl today': pnl_data['unrealized_pnl_today'],
+        'realized pnl today': pnl_data['realized_pnl_today'],
+        'total pnl': pnl_data['total_pnl'],
+        'total pnl today': pnl_data['total_pnl_today'],
+        
+        # Risk data
+        'standard deviation': risk_data['standard_deviation'],
+        'sharpe ratio': risk_data['sharpe_ratio'],
+        'alpha': risk_data['alpha'],
+        'beta': risk_data['beta'],
+        'r squared': risk_data['r_squared'],
+        
+        'last updated': datetime.now().isoformat()
+    }
+    logger.info("--------------------")
+    logger.info(f"Combined data: {combined_data_dic}")
+    logger.info("--------------------")
+    return combined_data_dic
+
+
 @st.experimental_fragment(run_every=timedelta(seconds=refresh_rate))
 def position_view():
     st.header("Position View")
@@ -313,59 +359,68 @@ def position_view():
         selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
         account_id = selected_account["account_id"]
         redis_server = get_redis_connection()
-        ps = redis_server.pubsub()
-        ps.subscribe('position_full_key')
         if redis_server:
             tickers = read_tickers_from_file()
-            # logger.info(tickers)
             if tickers:
                 positions = fetch_all_positions_and_prices(redis_server, account_id, tickers)
-                position_df = pd.DataFrame(positions)
-                if position_df.empty:
-                    st.write("There are no positions for this account. Please check back after making some trades.")
-                else:
-                    #order = ['last_updated', 'account_id', 'ticker', 'quantity', 'position_type', 'avg_price']
-                    #sorted_df = position_df.sort_values(by='last_updated', ascending=False)
-                    #sorted_df.drop(columns=['last_updated'])
-                    #sorted_df.columns = ['Account ID', 'Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'last_updated' ,'']
-                    #st.dataframe(sorted_df.drop(columns=['Account ID', 'last_updated','']))
-                    used_tickers = position_df['ticker']
-                    full_dict = {}
-                    # expanded = True
-                    # if expanded:
-                    for ticker in used_tickers:
-                        key = f"combined:{account_id}:{ticker}"
-                        json_data = redis_server.get(key)
-                        if json_data is not None:
-                            data = json.loads(json_data)
-                            #dict(data).pop('ticker')
-                            full_dict[ticker] = data
-                            #dict(data).pop('last updated')
-                    if full_dict is not None and len(full_dict.keys()) > 0:
-                        columns = ['Account','Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'Realized PnL','Unrealized PnL', 'Realized PnL Today','Total PnL','Total PnL Today','Standart Deviation','Sharpe Ratio','Alpha','Beta','R^2','Last Updated' ,'']
-                        df = pd.DataFrame.from_dict(full_dict, orient='index')
-                        #df.drop(columns=["ticker"])
-                        df.columns = columns
-                        # df = df.drop(columns=['Ticker'])
-                        df['Avg. Price'] = df['Avg. Price'].apply(lambda x: f"${x:,.2f}")
-                        df['Realized PnL'] = df['Realized PnL'].apply(lambda x: f"${x:,.2f}")
-                        df['Unrealized PnL'] = df['Unrealized PnL'].apply(lambda x: f"${x:,.2f}")
-                        df['Realized PnL Today'] = df['Realized PnL Today'].apply(lambda x: f"${x:,.2f}")
-                        df['Total PnL Today'] = df['Total PnL Today'].apply(lambda x: f"${x:,.2f}")
-                        df['Total PnL'] = df['Total PnL'].apply(lambda x: f"${x:,.2f}")
-                        st.dataframe(df)
-                    else:
+                if positions:
+                    position_df = pd.DataFrame(positions)
+                    if position_df.empty:
                         st.write("There are no positions for this account. Please check back after making some trades.")
+                    else:
+                        used_tickers = position_df['ticker']
+                        full_dict = {}
+                        for ticker in used_tickers:
+                            try:
+                                full_position = get_full_position_data(redis_server, account_id, ticker)
+                                full_dict[ticker] = full_position
+                            except ValueError as e:
+                                logger.error(e)
+                                continue
 
-                        #full_data = retrieve_position_full_data(redis_server, expanded)
-                        #st.write(full_data)
+                        if full_dict and len(full_dict.keys()) > 0:
+                            df = pd.DataFrame.from_dict(full_dict, orient='index')
+                            df = df.rename(columns={
+                                'account': 'Account',
+                                'ticker': 'Ticker',
+                                'quantity': 'Quantity',
+                                'position type': 'Position Type',
+                                'avg price': 'Avg. Price',
+                                'realized pnl': 'Realized PnL',
+                                'unrealized pnl': 'Unrealized PnL',
+                                'unrealized pnl today': 'Unrealized PnL Today',
+                                'realized pnl today': 'Realized PnL Today',
+                                'total pnl': 'Total PnL',
+                                'total pnl today': 'Total PnL Today',
+                                'standard deviation': 'Standard Deviation',
+                                'sharpe ratio': 'Sharpe Ratio',
+                                'alpha': 'Alpha',
+                                'beta': 'Beta',
+                                'r squared': 'R^2',
+                                'last updated': 'Last Updated'
+                            })
 
+                            # Format currency fields
+                            currency_fields = ['Avg. Price', 'Realized PnL', 'Unrealized PnL', 'Unrealized PnL Today', 'Realized PnL Today', 'Total PnL', 'Total PnL Today']
+                            for field in currency_fields:
+                                df[field] = df[field].apply(lambda x: f"${x:,.2f}")
+
+                            # Add a column for the row numbers starting from 1
+                            df.insert(0, 'No.', range(1, len(df) + 1))
+
+                            # Display the DataFrame without the default index
+                            st.dataframe(df.set_index('No.'))
+                        else:
+                            st.write("There are no positions for this account. Please check back after making some trades.")
+                else:
+                    st.write("There are no positions for this account. Please check back after making some trades.")
             else:
                 st.error("No tickers available.")
         else:
             st.error("Unable to connect to Redis.")
     else:
         st.error("No account IDs available.")
+
 
 
 def single_trade():
@@ -581,7 +636,7 @@ def trading_dashboard():
         account_name = st.text_input("Account Name", key="create_account_account_name")
         if st.button("Create Account", key="create_account_button") and account_name:
             headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-            response = requests.post(f"http://localhost:8010/publish/account/new", json={
+            response = requests.post(f"http://main10:8010/publish/account/new", json={
                 "account_name": account_name
             }, headers=headers)
             if response.status_code == 200:
