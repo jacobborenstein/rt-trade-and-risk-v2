@@ -359,7 +359,7 @@ def position_view():
                                 #dict(data).pop('ticker')
                                 full_dict[ticker] = data
                                 #dict(data).pop('last updated')
-                        if full_dict is not None:
+                        if full_dict is not None and len(full_dict.keys()) > 0:
                             columns = ['Account','Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'Realized PnL','Unrealized PnL', 'Realized PnL Today','Total PnL','Total PnL Today','Standart Deviation','Sharpe Ratio','Alpha','Beta','R^2','Last Updated' ,'']
                             df = pd.DataFrame.from_dict(full_dict, orient='index')
                             #df.drop(columns=["ticker"])
