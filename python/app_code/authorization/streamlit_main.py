@@ -359,18 +359,22 @@ def position_view():
                                 #dict(data).pop('ticker')
                                 full_dict[ticker] = data
                                 #dict(data).pop('last updated')
-                        columns = ['Account','Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'Realized PnL','Unrealized PnL', 'Realized PnL Today','Total PnL','Total PnL Today','Standart Deviation','Sharpe Ratio','Alpha','Beta','R^2','Last Updated' ,'']
-                        df = pd.DataFrame.from_dict(full_dict, orient='index')
-                        #df.drop(columns=["ticker"])
-                        df.columns = columns
-                        df = df.drop(columns=['Ticker'])
-                        df['Avg. Price'] = df['Avg. Price'].apply(lambda x: f"${x:,.2f}")
-                        df['Realized PnL'] = df['Realized PnL'].apply(lambda x: f"${x:,.2f}")
-                        df['Unrealized PnL'] = df['Unrealized PnL'].apply(lambda x: f"${x:,.2f}")
-                        df['Realized PnL Today'] = df['Realized PnL Today'].apply(lambda x: f"${x:,.2f}")
-                        df['Total PnL Today'] = df['Total PnL Today'].apply(lambda x: f"${x:,.2f}")
-                        df['Total PnL'] = df['Total PnL'].apply(lambda x: f"${x:,.2f}")
-                        st.dataframe(df)
+                        if full_dict is not None:
+                            columns = ['Account','Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'Realized PnL','Unrealized PnL', 'Realized PnL Today','Total PnL','Total PnL Today','Standart Deviation','Sharpe Ratio','Alpha','Beta','R^2','Last Updated' ,'']
+                            df = pd.DataFrame.from_dict(full_dict, orient='index')
+                            #df.drop(columns=["ticker"])
+                            df.columns = columns
+                            df = df.drop(columns=['Ticker'])
+                            df['Avg. Price'] = df['Avg. Price'].apply(lambda x: f"${x:,.2f}")
+                            df['Realized PnL'] = df['Realized PnL'].apply(lambda x: f"${x:,.2f}")
+                            df['Unrealized PnL'] = df['Unrealized PnL'].apply(lambda x: f"${x:,.2f}")
+                            df['Realized PnL Today'] = df['Realized PnL Today'].apply(lambda x: f"${x:,.2f}")
+                            df['Total PnL Today'] = df['Total PnL Today'].apply(lambda x: f"${x:,.2f}")
+                            df['Total PnL'] = df['Total PnL'].apply(lambda x: f"${x:,.2f}")
+                            st.dataframe(df)
+                        else:
+                            st.write("There are no positions for this account. Please check back after making some trades.")
+
                         #full_data = retrieve_position_full_data(redis_server, expanded)
                         #st.write(full_data)
 
