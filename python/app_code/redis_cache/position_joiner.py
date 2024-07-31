@@ -11,9 +11,10 @@ import json
 import time
 import asyncio
 
+
 try:
     print("Connecting to Redis...")
-    r = redis.Redis(host='redis', port=6379)
+    r = redis.Redis(host='localhost', port=6379)
     pubsub = r.pubsub()
     pubsub.subscribe('P_&_L','risk_calculation')
     print("Subscribed to channels")
@@ -88,8 +89,7 @@ async def combine_and_process_data(account_id, ticker):
         'beta': risk_data['beta'],
         'r squared': risk_data['r_squared'],
         
-        'last updated': datetime.now().isoformat()
-        
+        'last updated': datetime.now().isoformat()    
     }
     
     print(f"Combined Data: {combined_data_dic}")
@@ -99,6 +99,10 @@ async def combine_and_process_data(account_id, ticker):
     k = f"combined:{account_id}:{ticker}"
     r.set(k, json.dumps(combined_data_dic))
     r.publish('position_full_key', k)
+
+    print("-------------------")
+    print(r.get(k))
+    print("-------------------")
 
 
 

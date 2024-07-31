@@ -29,25 +29,21 @@ st.set_page_config(page_title="Trading Dashboard", page_icon=":chart_with_upward
 
 refresh_rate = 10
 
-
 # round robin load balancing function
 def get_backend_url():
     urls = [
-        "http://main0:8000",
-        "http://main1:8001",
-        "http://main2:8002",
-        "http://main3:8003",
-        "http://main4:8004",
-        "http://main5:8005",
-        "http://main6:8006",
-        "http://main7:8007",
-        "http://main8:8008",
-        "http://main9:8009",
+        "http://localhost:8000",
+        "http://localhost:8001",
+        "http://localhost:8002",
+        "http://localhost:8003",
+        "http://localhost:8004",
+        "http://localhost:8005",
+        "http://localhost:8006",
+        "http://localhost:8007",
+        "http://localhost:8008",
+        "http://localhost:8009",
     ]
     return urls[int(time.time()) % len(urls)]
-# backend_url = "http://18.214.165.102/backend"
-# backend_url = "http://localhost:8000"
-
 
 # Homepage
 def homepage():
@@ -158,9 +154,114 @@ def get_accounts():
             logger.error(f"Error fetching accounts: {e}. Retrying {retries}/{max_retries}")
             time.sleep(1)  # Wait before retrying
             if retries == max_retries:
-                st.error(f"Error fetching accounts after {max_retries} attempts: {e}")
+                st.error("Error fetching accounts after multiple attempts.")
                 return []
 
+# Retrieve Price Data
+def retrieve_price_data(redis_server, ticker):
+    price_data_json = redis_server.get(f"price:{ticker}")
+    if price_data_json:
+        try:
+            price = json.loads(price_data_json)
+            if isinstance(price, (int, float)):
+                return price
+            else:
+                logger.error(f"Invalid price data for ticker {ticker}: {price}")
+                raise ValueError(f"Invalid price data for ticker {ticker}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding price data for ticker {ticker}: {e}")
+            raise ValueError(f"Error decoding price data for ticker {ticker}")
+    else:
+        logger.error(f"No price data found for ticker {ticker}")
+        raise ValueError(f"No price data found for ticker {ticker}")
+
+# Read Tickers from File
+def read_tickers_from_file():
+    tickers_path = '/app/python/tickers.txt'
+    tickers_path_development = 'python/tickers.txt'
+    try:
+        with open(tickers_path_development, 'r') as file:
+            tickers = file.read().splitlines()
+        return tickers
+    except Exception as e:
+        st.error(f"Error reading tickers from file: {e}")
+        return []
+
+# Get Redis Connection
+def get_redis_connection():
+    try:
+        r = redis.Redis(host='localhost', port=6379)
+        return r
+    except Exception as e:
+        st.error(f"Error connecting to Redis: {e}")
+        return None
+
+def fetch_trade_keys_by_account(redis_server, account_id):
+    trade_keys = redis_server.lrange(f"account:{account_id}:trades", 0, -1)
+    return [key.decode('utf-8') for key in trade_keys]
+
+def fetch_trade_data_by_account(redis_server, account_id):
+    trade_keys = fetch_trade_keys_by_account(redis_server, account_id)
+    trades = []
+    for key in trade_keys:
+        trade = retrieve_trade_data(redis_server, key)
+        if trade is not None:
+            trades.append(trade.model_dump())
+        else:
+            logger.error(f"Trade data for key {key} could not be retrieved.")
+    return trades
+
+# Display Table of Trade Data
+@st.experimental_fragment(run_every=timedelta(seconds=refresh_rate))
+def trade_view():
+    st.header("Trade View")
+    account_ids = fetch_account_ids()
+    if account_ids:
+        accounts = get_accounts()
+        account_names = [account["account_name"] for account in accounts if account]
+        account_name = st.selectbox("Account", account_names, key="trade_view_account_id")
+        selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
+        account_id = selected_account["account_id"]
+        redis_server = get_redis_connection()
+        if redis_server:
+            trade_data = fetch_trade_data_by_account(redis_server, account_id)
+            user_response = requests.get(f"{get_backend_url()}/users/me", headers={"Authorization": f"Bearer {st.session_state['token']}"})
+            user_data = user_response.json()
+            username = user_data.get("username", "Unknown")
+            if trade_data:
+                for trade in trade_data:
+                    trade['executed_time'] = pd.to_datetime(trade['executed_time']).strftime('%Y-%m-%d %H:%M')
+                    trade['executed_price'] = f"${float(trade['executed_price']):,.2f}"
+                    trade['total_price'] = f"${trade['quantity'] * float(trade['executed_price'][1:].replace(',', '')):,.2f}"
+                    trade['primaryKey'] = f"{trade['primaryKey']['account_id']} - {trade['primaryKey']['trade_id']}"
+                    trade['executed_user'] = username
+
+                # Create a DataFrame with selected columns
+                trade_df = pd.DataFrame(trade_data)
+                trade_df = trade_df.rename(columns={
+                    'executed_time': 'Time',
+                    'ticker': 'Ticker',
+                    'direction': 'Direction',
+                    'quantity': 'Quantity',
+                    'total_price': 'Total Price',
+                    'executed_price': 'Executed Price',
+                    'executed_user': 'Executed User',
+                    'primaryKey': 'Primary Key'
+                })
+                trade_df = trade_df[['Time', 'Ticker', 'Direction', 'Quantity', 'Total Price', 'Executed Price', 'Executed User', 'Primary Key']]
+
+                # Add a column for the row numbers starting from 1
+                trade_df.insert(0, 'No.', range(1, len(trade_df) + 1))
+
+                # Display the DataFrame without the default index
+                st.dataframe(trade_df.set_index('No.'))
+
+            else:
+                st.write("No trade data available for this account.")
+        else:
+            st.error("Unable to connect to Redis.")
+    else:
+        st.error("No account IDs available.")
 
 # Retrieve Position Data
 def retrieve_position_data(redis_server, account_id, ticker):
@@ -199,120 +300,8 @@ def fetch_all_positions_and_prices(redis_server, account_id, tickers):
             #logger.error(f"No position data found for ticker: {ticker}")
             pass
     
-    return pd.DataFrame(positions)
+    return positions
 
-
-# Retrieve Price Data
-def retrieve_price_data(redis_server, ticker):
-    price_data_json = redis_server.get(f"price:{ticker}")
-    if price_data_json:
-        try:
-            price = json.loads(price_data_json)
-            if isinstance(price, (int, float)):
-                return price
-            else:
-                logger.error(f"Invalid price data for ticker {ticker}: {price}")
-                raise ValueError(f"Invalid price data for ticker {ticker}")
-        except json.JSONDecodeError as e:
-            logger.error(f"Error decoding price data for ticker {ticker}: {e}")
-            raise ValueError(f"Error decoding price data for ticker {ticker}")
-    else:
-        logger.error(f"No price data found for ticker {ticker}")
-        raise ValueError(f"No price data found for ticker {ticker}")
-
-# Read Tickers from File
-def read_tickers_from_file():
-    tickers_path = '/app/python/tickers.txt'
-    tickers_path_development = 'python/tickers.txt'
-    try:
-        with open(tickers_path, 'r') as file:
-            tickers = file.read().splitlines()
-        return tickers
-    except Exception as e:
-        st.error(f"Error reading tickers from file: {e}")
-        return []
-
-# Get Redis Connection
-def get_redis_connection():
-    try:
-        r = redis.Redis(host='redis', port=6379)
-        return r
-    except Exception as e:
-        st.error(f"Error connecting to Redis: {e}")
-        return None
-
-
-def fetch_trade_keys_by_account(redis_server, account_id):
-    trade_keys = redis_server.lrange(f"account:{account_id}:trades", 0, -1)
-    return [key.decode('utf-8') for key in trade_keys]
-
-def fetch_trade_data_by_account(redis_server, account_id):
-    trade_keys = fetch_trade_keys_by_account(redis_server, account_id)
-    trades = []
-    for key in trade_keys:
-        trade = retrieve_trade_data(redis_server, key)
-        if trade is not None:
-            trades.append(trade.model_dump())
-        else:
-            logger.error(f"Trade data for key {key} could not be retrieved.")
-    return trades
-
-
-# Display Table of Trade Data
-@st.experimental_fragment(run_every=timedelta(seconds=refresh_rate))
-def trade_view():
-    st.header("Trade View")
-    account_ids = fetch_account_ids()
-    if account_ids:
-        accounts = get_accounts()
-        account_names = [account["account_name"] for account in accounts if account]
-        account_name = st.selectbox("Account", account_names, key="trade_view_account_id")
-        selected_account = next(account for account in accounts if account and account["account_name"] == account_name)
-        account_id = selected_account["account_id"]
-        redis_server = get_redis_connection()
-        if redis_server:
-            trade_data = fetch_trade_data_by_account(redis_server, account_id)
-            user_response = requests.get(f"{get_backend_url()}/users/me", headers={"Authorization": f"Bearer {st.session_state['token']}"})
-            user_data = user_response.json()
-            username = user_data.get("username", "Unknown")
-            if trade_data:
-                # Format data
-                for trade in trade_data:
-                    trade['executed_time'] = pd.to_datetime(trade['executed_time']).strftime('%Y-%m-%d %H:%M')
-                    trade['executed_price'] = f"${float(trade['executed_price']):,.2f}"
-                    trade['total_price'] = f"${trade['quantity'] * float(trade['executed_price'][1:].replace(',', '')):,.2f}"
-                    trade['primaryKey'] = f"{trade['primaryKey']['account_id']} - {trade['primaryKey']['trade_id']}"
-                    trade['executed_user'] = username
-
-                # Create a DataFrame with selected columns
-                trade_df = pd.DataFrame(trade_data)
-                trade_df = trade_df.rename(columns={
-                    'executed_time': 'Time',
-                    'ticker': 'Ticker',
-                    'direction': 'Direction',
-                    'quantity': 'Quantity',
-                    'total_price': 'Total Price',
-                    'executed_price': 'Executed Price',
-                    'executed_user': 'Executed User',
-                    'primaryKey': 'Primary Key'
-                })
-                trade_df = trade_df[['Time', 'Ticker', 'Direction', 'Quantity', 'Total Price', 'Executed Price', 'Executed User', 'Primary Key']]
-
-                # Add a column for the row numbers starting from 1
-                trade_df.insert(0, 'No.', range(1, len(trade_df) + 1))
-
-                # Display the DataFrame without the default index
-                st.dataframe(trade_df.set_index('No.'))
-
-            else:
-                st.write("No trade data available for this account.")
-        else:
-            st.error("Unable to connect to Redis.")
-    else:
-        st.error("No account IDs available.")
-
-
-# Display Table of Position Data
 @st.experimental_fragment(run_every=timedelta(seconds=refresh_rate))
 def position_view():
     st.header("Position View")
@@ -328,9 +317,10 @@ def position_view():
         ps.subscribe('position_full_key')
         if redis_server:
             tickers = read_tickers_from_file()
-            logger.info(tickers)
+            # logger.info(tickers)
             if tickers:
-                position_df = fetch_all_positions_and_prices(redis_server, account_id, tickers)
+                positions = fetch_all_positions_and_prices(redis_server, account_id, tickers)
+                position_df = pd.DataFrame(positions)
                 if position_df.empty:
                     st.write("There are no positions for this account. Please check back after making some trades.")
                 else:
@@ -341,21 +331,22 @@ def position_view():
                     #st.dataframe(sorted_df.drop(columns=['Account ID', 'last_updated','']))
                     used_tickers = position_df['ticker']
                     full_dict = {}
-                    expanded = True
-                    if expanded:
-                        for ticker in used_tickers:
-                            key = f"combined:{account_id}:{ticker}"
-                            json_data = redis_server.get(key)
-                            if json_data is not None:
-                                data = json.loads(json_data)
-                                #dict(data).pop('ticker')
-                                full_dict[ticker] = data
-                                #dict(data).pop('last updated')
+                    # expanded = True
+                    # if expanded:
+                    for ticker in used_tickers:
+                        key = f"combined:{account_id}:{ticker}"
+                        json_data = redis_server.get(key)
+                        if json_data is not None:
+                            data = json.loads(json_data)
+                            #dict(data).pop('ticker')
+                            full_dict[ticker] = data
+                            #dict(data).pop('last updated')
+                    if full_dict is not None and len(full_dict.keys()) > 0:
                         columns = ['Account','Ticker', 'Quantity', 'Position Type', 'Avg. Price', 'Realized PnL','Unrealized PnL', 'Realized PnL Today','Total PnL','Total PnL Today','Standart Deviation','Sharpe Ratio','Alpha','Beta','R^2','Last Updated' ,'']
                         df = pd.DataFrame.from_dict(full_dict, orient='index')
                         #df.drop(columns=["ticker"])
                         df.columns = columns
-                        df = df.drop(columns=['Ticker'])
+                        # df = df.drop(columns=['Ticker'])
                         df['Avg. Price'] = df['Avg. Price'].apply(lambda x: f"${x:,.2f}")
                         df['Realized PnL'] = df['Realized PnL'].apply(lambda x: f"${x:,.2f}")
                         df['Unrealized PnL'] = df['Unrealized PnL'].apply(lambda x: f"${x:,.2f}")
@@ -363,6 +354,9 @@ def position_view():
                         df['Total PnL Today'] = df['Total PnL Today'].apply(lambda x: f"${x:,.2f}")
                         df['Total PnL'] = df['Total PnL'].apply(lambda x: f"${x:,.2f}")
                         st.dataframe(df)
+                    else:
+                        st.write("There are no positions for this account. Please check back after making some trades.")
+
                         #full_data = retrieve_position_full_data(redis_server, expanded)
                         #st.write(full_data)
 
@@ -372,8 +366,6 @@ def position_view():
             st.error("Unable to connect to Redis.")
     else:
         st.error("No account IDs available.")
-
-
 
 
 def single_trade():
@@ -422,7 +414,6 @@ def single_trade():
                 st.experimental_rerun()
     else:
         st.error("User has no accounts")
-
 
 def parse_bulk_input(bulk_input):
     # Updated regex to allow periods in tickers
@@ -524,8 +515,6 @@ def bulk_book():
                         st.error(str(e))
                         all_trades_successful = False
                 
-                # progress_bar = st.progress(0)
-                # progress_step = 100 / len(trades_to_submit)
                 with st.spinner("Submitting trades..."):
                     max_retries = 3
                     for i, trade in enumerate(trades_to_submit):
@@ -552,8 +541,6 @@ def bulk_book():
                             st.error(f"Failed to submit trade for {trade['ticker']} after {max_retries} attempts.")
                             break
 
-                        # progress_bar.progress(int((i + 1)) * progress_step)
-
                 if all_trades_successful:
                     st.success("All trades submitted successfully!")
                     st.balloons()
@@ -561,8 +548,6 @@ def bulk_book():
                     st.session_state.multi_trade_data = []
                 else:
                     st.error("One or more trades failed to submit.")
-                
-                # progress_bar.empty()
 
                 time.sleep(5)
                 st.experimental_rerun()
@@ -596,7 +581,7 @@ def trading_dashboard():
         account_name = st.text_input("Account Name", key="create_account_account_name")
         if st.button("Create Account", key="create_account_button") and account_name:
             headers = {"Authorization": f"Bearer {st.session_state['token']}"}
-            response = requests.post(f"http://main10:8010/publish/account/new", json={
+            response = requests.post(f"http://localhost:8010/publish/account/new", json={
                 "account_name": account_name
             }, headers=headers)
             if response.status_code == 200:

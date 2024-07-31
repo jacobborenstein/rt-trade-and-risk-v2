@@ -15,4 +15,4 @@ tickers = ['MMM', 'ACE', 'ABT', 'ANF', 'ACN', 'ADBE', 'AMD', 'AES', 'AET', 'AFL'
 
 # Write output to a file
 with open('/Users/yaakov/project/rt-trade-and-risk-v2/python/app_code/stockOutput.txt', 'w') as file:
-    file.write(generate_bulk_input(tickers, 500))
+    file.write(generate_bulk_input(tickers, 250))
